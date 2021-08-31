@@ -64,3 +64,5 @@ require (
 // https://github.com/ethereum/go-ethereum/issues/20590 is fixed, stub it out
 // with a replace directive. The stub was hacked together with vim.
 replace gopkg.in/olebedev/go-duktape.v3 => ./duktape-stub
+
+replace github.com/vocdoni/arbo => ../tmp/arbo
