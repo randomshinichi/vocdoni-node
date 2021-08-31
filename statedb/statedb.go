@@ -1,5 +1,12 @@
 package statedb
 
+import (
+	"encoding/binary"
+
+	"go.vocdoni.io/dvote/db"
+	"go.vocdoni.io/dvote/db/prefixeddb"
+)
+
 type TreeType string
 
 const (
@@ -7,6 +14,25 @@ const (
 	TreeTypePoseidon TreeType = "poseidon"
 	TreeTypeBlake2b  TreeType = "blake2b"
 )
+
+const (
+	subKeyTree    byte = 't'
+	subKeyMeta    byte = 'm'
+	subKeyNoState byte = 'n'
+	subKeySubTree byte = 's'
+)
+
+var (
+	keyNextVersion []byte = []byte("nextver")
+)
+
+func subDB(db db.Database, subKey byte) db.Database {
+	return prefixeddb.NewPrefixedDatabase(db, []byte{subKey})
+}
+
+func subTx(tx db.WriteTx, subKey byte) db.WriteTx {
+	return prefixeddb.NewPrefixedWriteTx(tx, []byte{subKey})
+}
 
 type Viewer interface {
 	Get(key []byte) ([]byte, error)
@@ -30,12 +56,12 @@ type SubTreeConfig struct {
 }
 
 func NewSubTreeConfig(typ TreeType, kindID []byte,
-	getRoot GetRootFn, setRoot SetRootFn, maxLevels int) *SubTreeConfig {
+	parentLeafGetRoot GetRootFn, parentLeafSetRoot SetRootFn, maxLevels int) *SubTreeConfig {
 	return &SubTreeConfig{
 		typ:               typ,
 		kindID:            kindID,
-		parentLeafGetRoot: getRoot,
-		parentLeafSetRoot: setRoot,
+		parentLeafGetRoot: parentLeafGetRoot,
+		parentLeafSetRoot: parentLeafSetRoot,
 		maxLevels:         maxLevels,
 	}
 }
@@ -46,8 +72,9 @@ type SubTreeSingleConfig struct {
 }
 
 func NewSubTreeSingleConfig(typ TreeType, kindID []byte,
-	getRoot GetRootFn, setRoot SetRootFn, key []byte) *SubTreeSingleConfig {
-	cfg := NewSubTreeConfig(typ, kindID, getRoot, setRoot, maxLevels)
+	parentLeafGetRoot GetRootFn, parentLeafSetRoot SetRootFn, maxLevels int,
+	key []byte) *SubTreeSingleConfig {
+	cfg := NewSubTreeConfig(typ, kindID, parentLeafGetRoot, parentLeafSetRoot, maxLevels)
 	return &SubTreeSingleConfig{
 		key: key,
 		cfg: *cfg,
@@ -58,13 +85,13 @@ func (c *SubTreeSingleConfig) Key() []byte {
 	return c.key
 }
 
-var mainTree = NewSubTreeSingleConfig(TreeTypeSha256, nil, nil, nil)
+var mainTree = NewSubTreeSingleConfig(TreeTypeSha256, nil, nil, nil, 256, nil)
 
 type StateDB struct {
-	db Database
+	db db.Database
 }
 
-func NewStateDB(db Database) *StateDB {
+func NewStateDB(db db.Database) *StateDB {
 	return &StateDB{
 		db: db,
 	}
@@ -78,8 +105,18 @@ func NewStateDB(db Database) *StateDB {
 // 	return NewStateDB(db), nil
 // }
 
-func (s *StateDB) Version() uint64 {
-	panic("TODO")
+// The first commited version is 1.  Calling Version on a fresh StateDB will
+// return 0.
+func (s *StateDB) Version() (uint64, error) {
+	tx := subDB(s.db, subKeyMeta).ReadTx()
+	defer tx.Discard()
+	versionLE, err := tx.Get(keyNextVersion)
+	if err == db.ErrKeyNotFound {
+		return 0, nil
+	} else if err != nil {
+		return 0, err
+	}
+	return binary.LittleEndian.Uint64(versionLE), nil
 }
 
 func (s *StateDB) VersionRoot(v uint64) ([]byte, error) {
