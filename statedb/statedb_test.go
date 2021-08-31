@@ -113,7 +113,7 @@ func TestStateDB(t *testing.T) {
 		qt.Assert(t, err, qt.IsNil)
 
 		_, err = mainTreeView.Get(keys[2])
-		qt.Assert(t, err, qt.Equals, db.ErrKeyNotFound)
+		qt.Assert(t, err, qt.Equals, arbo.ErrKeyNotFound)
 	}
 
 	mainTree.Discard()
