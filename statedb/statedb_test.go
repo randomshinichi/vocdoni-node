@@ -124,22 +124,54 @@ var singleCfg = NewSubTreeSingleConfig(
 	[]byte("single"),
 	256,
 	func(value []byte) ([]byte, error) {
+		if len(value) != 32 {
+			return nil, fmt.Errorf("len(value) = %v != 32", len(value))
+		}
 		return value, nil
 	},
 	func(value []byte, root []byte) ([]byte, error) {
+		if len(value) != 32 {
+			return nil, fmt.Errorf("len(value) = %v != 32", len(value))
+		}
 		return root, nil
 	},
 )
 
-var multiCfg = NewSubTreeConfig(
+var multiACfg = NewSubTreeConfig(
 	arbo.HashFunctionSha256,
-	[]byte("multi"),
+	[]byte("multia"),
 	256,
 	func(value []byte) ([]byte, error) {
-		return value, nil
+		if len(value) != 64 {
+			return nil, fmt.Errorf("len(value) = %v != 64", len(value))
+		}
+		return value[:32], nil
 	},
 	func(value []byte, root []byte) ([]byte, error) {
-		return root, nil
+		if len(value) != 64 {
+			return nil, fmt.Errorf("len(value) = %v != 64", len(value))
+		}
+		copy(value[:32], root)
+		return value, nil
+	},
+)
+
+var multiBCfg = NewSubTreeConfig(
+	arbo.HashFunctionPoseidon,
+	[]byte("multib"),
+	256,
+	func(value []byte) ([]byte, error) {
+		if len(value) != 64 {
+			return nil, fmt.Errorf("len(value) = %v != 64", len(value))
+		}
+		return value[32:], nil
+	},
+	func(value []byte, root []byte) ([]byte, error) {
+		if len(value) != 64 {
+			return nil, fmt.Errorf("len(value) = %v != 64", len(value))
+		}
+		copy(value[32:], root)
+		return value, nil
 	},
 )
 
@@ -149,20 +181,88 @@ func TestSubTree(t *testing.T) {
 	mainTree, err := sdb.BeginTx()
 	qt.Assert(t, err, qt.IsNil)
 
+	// Example of a singleton subtree which root is the leaf of the main tree
 	qt.Assert(t, mainTree.Add(singleCfg.Key(), emptyHash), qt.IsNil)
-	treePrint(mainTree.tree, mainTree.txTree, "main")
+	// treePrint(mainTree.tree, mainTree.txTree, "main")
 	single, err := mainTree.SubTreeSingle(singleCfg)
 	qt.Assert(t, err, qt.IsNil)
 	qt.Assert(t, single.Add([]byte("key0"), []byte("value0")), qt.IsNil)
-	treePrint(single.tree, single.txTree, "single")
+	qt.Assert(t, single.Add([]byte("key1"), []byte("value1")), qt.IsNil)
+	// treePrint(single.tree, single.txTree, "single")
+
+	// Example of two (multi) subtrees which roots are in a leaf of the main tree
+	id := []byte("01234567")
+	qt.Assert(t, mainTree.Add(id, make([]byte, 32*2)), qt.IsNil)
+	// treePrint(mainTree.tree, mainTree.txTree, "main")
+	multiA, err := mainTree.SubTree(id, multiACfg)
+	qt.Assert(t, err, qt.IsNil)
+	qt.Assert(t, multiA.Add([]byte("key2"), []byte("value2")), qt.IsNil)
+	multiB, err := mainTree.SubTree(id, multiBCfg)
+	qt.Assert(t, err, qt.IsNil)
+	qt.Assert(t, multiB.Add([]byte("key3"), []byte("value3")), qt.IsNil)
+	// treePrint(multiA.tree, multiA.txTree, "multiA")
+
 	qt.Assert(t, mainTree.Commit(), qt.IsNil)
 
-	mainTree, err = sdb.BeginTx()
-	qt.Assert(t, err, qt.IsNil)
-	treePrint(mainTree.tree, mainTree.txTree, "main")
-	mainTree.Discard()
+	// dumpPrint(sdb.db)
 
-	dumpPrint(sdb.db)
+	// Check that values in each subtree is as expected
+	{
+		mainTreeView, err := sdb.TreeView()
+		qt.Assert(t, err, qt.IsNil)
+
+		single, err := mainTreeView.SubTreeSingle(singleCfg)
+		qt.Assert(t, err, qt.IsNil)
+		v0, err := single.Get([]byte("key0"))
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, v0, qt.DeepEquals, []byte("value0"))
+		v1, err := single.Get([]byte("key1"))
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, v1, qt.DeepEquals, []byte("value1"))
+
+		multiA, err := mainTreeView.SubTree(id, multiACfg)
+		qt.Assert(t, err, qt.IsNil)
+		// fmt.Printf("DBG %+v\n", multiA.db)
+		// dumpPrint(multiA.tree.DB())
+		// treePrint(multiA.tree, nil, "multiA")
+		v2, err := multiA.Get([]byte("key2"))
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, v2, qt.DeepEquals, []byte("value2"))
+
+		multiB, err := mainTreeView.SubTree(id, multiBCfg)
+		qt.Assert(t, err, qt.IsNil)
+		v3, err := multiB.Get([]byte("key3"))
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, v3, qt.DeepEquals, []byte("value3"))
+	}
+
+	// Check the roots in the leafs are as expected
+	{
+		mainTreeView, err := sdb.TreeView()
+		qt.Assert(t, err, qt.IsNil)
+		singleParentLeaf, err := mainTreeView.Get(singleCfg.Key())
+		qt.Assert(t, err, qt.IsNil)
+		multiParentLeaf, err := mainTreeView.Get(id)
+		qt.Assert(t, err, qt.IsNil)
+
+		single, err := mainTreeView.SubTreeSingle(singleCfg)
+		qt.Assert(t, err, qt.IsNil)
+		singleRoot, err := single.Root()
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, singleParentLeaf, qt.DeepEquals, singleRoot)
+
+		multiA, err := mainTreeView.SubTree(id, multiACfg)
+		qt.Assert(t, err, qt.IsNil)
+		multiARoot, err := multiA.Root()
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, multiParentLeaf[:32], qt.DeepEquals, multiARoot)
+
+		multiB, err := mainTreeView.SubTree(id, multiBCfg)
+		qt.Assert(t, err, qt.IsNil)
+		multiBRoot, err := multiB.Root()
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, multiParentLeaf[32:], qt.DeepEquals, multiBRoot)
+	}
 }
 
 func newTestStateDB(t *testing.T) *StateDB {
@@ -243,3 +343,5 @@ func TestTree(t *testing.T) {
 	tx.Commit()
 	// dumpPrint(db)
 }
+
+// TODO: Test NoState

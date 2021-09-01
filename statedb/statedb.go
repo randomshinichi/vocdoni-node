@@ -3,6 +3,7 @@ package statedb
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 
 	"github.com/vocdoni/arbo"
 	"go.vocdoni.io/dvote/db"
@@ -282,7 +283,7 @@ func (t *readOnlyWriteTx) Delete(key []byte) error {
 }
 
 func (t *readOnlyWriteTx) Commit() error {
-	return ErrReadOnly
+	return nil
 }
 
 func (s *StateDB) TreeView() (*TreeView, error) {
@@ -353,6 +354,7 @@ func (v *TreeView) Dump() ([]byte, error) {
 }
 
 func (v *TreeView) subTree(cfg *treeConfig) (*TreeView, error) {
+	// fmt.Printf("DBG subTree parent: %x\n", cfg.parentLeafKey)
 	parentLeaf, err := v.tree.Get(nil, cfg.parentLeafKey)
 	if err != nil {
 		return nil, err
@@ -362,7 +364,7 @@ func (v *TreeView) subTree(cfg *treeConfig) (*TreeView, error) {
 		return nil, err
 	}
 
-	db := subDB(v.db, cfg.prefix)
+	db := subDB(v.db, join(subKeySubTree, cfg.prefix))
 	tx := db.ReadTx()
 	defer tx.Discard()
 	txTree := subReadTx(tx, subKeyTree)
@@ -374,6 +376,7 @@ func (v *TreeView) subTree(cfg *treeConfig) (*TreeView, error) {
 	} else if err != nil {
 		return nil, err
 	}
+	// fmt.Printf("DBG Loading %x at root %x (len=%v)\n", cfg.parentLeafKey, root, len(root))
 	tree, err = tree.FromRoot(root)
 	if err != nil {
 		return nil, err
@@ -514,7 +517,7 @@ func dfs(treeUpdate *TreeUpdate) ([]byte, error) {
 			root:    root,
 		})
 	}
-	if len(updatesByKey) == 0 {
+	if len(updatesByKey) == 0 && !treeUpdate.dirtyTree {
 		return nil, nil
 	}
 	for key, updates := range updatesByKey {
@@ -528,6 +531,7 @@ func dfs(treeUpdate *TreeUpdate) ([]byte, error) {
 				return nil, err
 			}
 		}
+		fmt.Printf("DBG Commit -> tree.Set %v at %x\n", treeUpdate.cfg.prefix, []byte(key))
 		if err := treeUpdate.tree.Set(treeUpdate.txTree, []byte(key), leaf); err != nil {
 			return nil, err
 		}
