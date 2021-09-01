@@ -150,12 +150,17 @@ func TestSubTree(t *testing.T) {
 	qt.Assert(t, err, qt.IsNil)
 
 	qt.Assert(t, mainTree.Add(singleCfg.Key(), emptyHash), qt.IsNil)
-	// treePrint(mainTree.tree, mainTree.txTree, "main")
+	treePrint(mainTree.tree, mainTree.txTree, "main")
 	single, err := mainTree.SubTreeSingle(singleCfg)
 	qt.Assert(t, err, qt.IsNil)
 	qt.Assert(t, single.Add([]byte("key0"), []byte("value0")), qt.IsNil)
-	// treePrint(single.tree, single.txTree, "single")
+	treePrint(single.tree, single.txTree, "single")
 	qt.Assert(t, mainTree.Commit(), qt.IsNil)
+
+	mainTree, err = sdb.BeginTx()
+	qt.Assert(t, err, qt.IsNil)
+	treePrint(mainTree.tree, mainTree.txTree, "main")
+	mainTree.Discard()
 
 	dumpPrint(sdb.db)
 }

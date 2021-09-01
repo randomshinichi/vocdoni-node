@@ -483,14 +483,65 @@ type TreeTx struct {
 	TreeUpdate
 }
 
+type update struct {
+	key     []byte
+	setRoot SetRootFn
+	root    []byte
+}
+
+func dfs(treeUpdate *TreeUpdate) ([]byte, error) {
+	// End of recursion
+	if len(treeUpdate.openSubs) == 0 {
+		if !treeUpdate.dirtyTree {
+			return nil, nil
+		} else {
+			return treeUpdate.tree.Root(treeUpdate.txTree)
+		}
+	}
+	updatesByKey := make(map[string][]update)
+	for _, sub := range treeUpdate.openSubs {
+		root, err := dfs(sub)
+		if err != nil {
+			return nil, err
+		}
+		if root == nil {
+			continue
+		}
+		key := sub.cfg.parentLeafKey
+		updatesByKey[string(key)] = append(updatesByKey[string(key)], update{
+			key:     key,
+			setRoot: sub.cfg.parentLeafSetRoot,
+			root:    root,
+		})
+	}
+	if len(updatesByKey) == 0 {
+		return nil, nil
+	}
+	for key, updates := range updatesByKey {
+		leaf, err := treeUpdate.tree.Get(treeUpdate.txTree, []byte(key))
+		if err != nil {
+			return nil, err
+		}
+		for _, update := range updates {
+			leaf, err = update.setRoot(leaf, update.root)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if err := treeUpdate.tree.Set(treeUpdate.txTree, []byte(key), leaf); err != nil {
+			return nil, err
+		}
+	}
+	return treeUpdate.tree.Root(treeUpdate.txTree)
+}
+
 func (t *TreeTx) Commit() error {
-	// TODO: Propagate roots of subtrees to parents leaves
-	t.openSubs = make(map[string]*TreeUpdate)
-	version, err := getVersion(t.tx)
+	root, err := dfs(&t.TreeUpdate)
 	if err != nil {
 		return err
 	}
-	root, err := t.tree.Root(t.txTree)
+	t.openSubs = make(map[string]*TreeUpdate)
+	version, err := getVersion(t.tx)
 	if err != nil {
 		return err
 	}
