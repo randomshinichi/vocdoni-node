@@ -38,7 +38,7 @@ func TestVersion(t *testing.T) {
 	qt.Assert(t, err, qt.IsNil)
 	qt.Assert(t, root1, qt.DeepEquals, root)
 
-	dumpPrint(sdb.db)
+	// dumpPrint(sdb.db)
 }
 
 func TestStateDB(t *testing.T) {
@@ -92,9 +92,9 @@ func TestStateDB(t *testing.T) {
 		qt.Assert(t, value, qt.DeepEquals, vals[0])
 	}
 
-	dumpPrint(sdb.db)
+	// dumpPrint(sdb.db)
 
-	fmt.Printf("DBG --- NewTx\n")
+	// fmt.Printf("DBG --- NewTx\n")
 
 	// Begin another Tx
 	mainTree, err = sdb.BeginTx()
@@ -117,6 +117,47 @@ func TestStateDB(t *testing.T) {
 	}
 
 	mainTree.Discard()
+}
+
+var singleCfg = NewSubTreeSingleConfig(
+	arbo.HashFunctionSha256,
+	[]byte("single"),
+	256,
+	func(value []byte) ([]byte, error) {
+		return value, nil
+	},
+	func(value []byte, root []byte) ([]byte, error) {
+		return root, nil
+	},
+)
+
+var multiCfg = NewSubTreeConfig(
+	arbo.HashFunctionSha256,
+	[]byte("multi"),
+	256,
+	func(value []byte) ([]byte, error) {
+		return value, nil
+	},
+	func(value []byte, root []byte) ([]byte, error) {
+		return root, nil
+	},
+)
+
+func TestSubTree(t *testing.T) {
+	sdb := newTestStateDB(t)
+
+	mainTree, err := sdb.BeginTx()
+	qt.Assert(t, err, qt.IsNil)
+
+	qt.Assert(t, mainTree.Add(singleCfg.Key(), emptyHash), qt.IsNil)
+	// treePrint(mainTree.tree, mainTree.txTree, "main")
+	single, err := mainTree.SubTreeSingle(singleCfg)
+	qt.Assert(t, err, qt.IsNil)
+	qt.Assert(t, single.Add([]byte("key0"), []byte("value0")), qt.IsNil)
+	// treePrint(single.tree, single.txTree, "single")
+	qt.Assert(t, mainTree.Commit(), qt.IsNil)
+
+	dumpPrint(sdb.db)
 }
 
 func newTestStateDB(t *testing.T) *StateDB {
@@ -152,10 +193,36 @@ func toString(v []byte) string {
 }
 
 func dumpPrint(db db.Database) {
+	fmt.Printf("--- DB Print ---\n")
 	db.Iterate(nil, func(key, value []byte) bool {
 		fmt.Printf("%v -> %v\n", toString(key), toString(value))
 		return true
 	})
+}
+
+func treePrint(t *tree.Tree, tx db.ReadTx, name string) {
+	fmt.Printf("--- Tree Print (%s)---\n", name)
+	if err := t.Iterate(tx, func(key, value []byte) bool {
+		if value[0] != arbo.PrefixValueLeaf {
+			return true
+		}
+		leafK, leafV := arbo.ReadLeafValue(value)
+		if len(leafK) > 10 {
+			fmt.Printf("%x..", leafK[:10])
+		} else {
+			fmt.Printf("%x", leafK)
+		}
+		fmt.Printf(" -> ")
+		if len(leafV) > 10 {
+			fmt.Printf("%x..", leafV[:10])
+		} else {
+			fmt.Printf("%x", leafV)
+		}
+		fmt.Printf("\n")
+		return true
+	}); err != nil {
+		panic(err)
+	}
 }
 
 func TestTree(t *testing.T) {
@@ -169,5 +236,5 @@ func TestTree(t *testing.T) {
 	qt.Assert(t, err, qt.IsNil)
 	qt.Assert(t, tree.Add(txTree, []byte("key0"), []byte("value0")), qt.IsNil)
 	tx.Commit()
-	dumpPrint(db)
+	// dumpPrint(db)
 }

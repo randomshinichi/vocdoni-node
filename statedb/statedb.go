@@ -31,6 +31,15 @@ import (
 // 	}
 // }
 
+func appendCopy(s []byte, v ...byte) []byte {
+	// Copy s to ensure we don't reuse the slice's backing array.
+	appended := make([]byte, 0, len(s)+len(v))
+	appended = append(appended, s...)
+	appended = append(appended, v...)
+	// Make sure the appended's capacity is fixed, to prevent future appends from sharing memory.
+	return appended[:len(appended):len(appended)]
+}
+
 var separator byte = '/'
 
 var (
@@ -56,19 +65,19 @@ func bytesToUint32(b []byte) uint32 {
 }
 
 func join(pathA, pathB []byte) []byte {
-	return append(append(pathA, separator), pathB...)
+	return appendCopy(appendCopy(pathA, separator), pathB...)
 }
 
 func subDB(db db.Database, path []byte) db.Database {
-	return prefixeddb.NewPrefixedDatabase(db, append(path, separator))
+	return prefixeddb.NewPrefixedDatabase(db, appendCopy(path, separator))
 }
 
 func subWriteTx(tx db.WriteTx, path []byte) db.WriteTx {
-	return prefixeddb.NewPrefixedWriteTx(tx, append(path, separator))
+	return prefixeddb.NewPrefixedWriteTx(tx, appendCopy(path, separator))
 }
 
 func subReadTx(tx db.ReadTx, path []byte) db.ReadTx {
-	return prefixeddb.NewPrefixedReadTx(tx, append(path, separator))
+	return prefixeddb.NewPrefixedReadTx(tx, appendCopy(path, separator))
 }
 
 type Viewer interface {
@@ -102,8 +111,14 @@ func (u *txUpdater) Set(key []byte, value []byte) error {
 	return u.tx.Set(key, value)
 }
 
-type GetRootFn func(value []byte) []byte
-type SetRootFn func(value []byte, root []byte) []byte
+type treeConfig struct {
+	parentLeafKey []byte
+	prefix        []byte
+	*SubTreeConfig
+}
+
+type GetRootFn func(value []byte) ([]byte, error)
+type SetRootFn func(value []byte, root []byte) ([]byte, error)
 
 type SubTreeConfig struct {
 	hashFunc          arbo.HashFunction
@@ -113,8 +128,8 @@ type SubTreeConfig struct {
 	maxLevels         int
 }
 
-func NewSubTreeConfig(hashFunc arbo.HashFunction, kindID []byte,
-	parentLeafGetRoot GetRootFn, parentLeafSetRoot SetRootFn, maxLevels int) *SubTreeConfig {
+func NewSubTreeConfig(hashFunc arbo.HashFunction, kindID []byte, maxLevels int,
+	parentLeafGetRoot GetRootFn, parentLeafSetRoot SetRootFn) *SubTreeConfig {
 	return &SubTreeConfig{
 		hashFunc:          hashFunc,
 		kindID:            kindID,
@@ -124,26 +139,38 @@ func NewSubTreeConfig(hashFunc arbo.HashFunction, kindID []byte,
 	}
 }
 
-type SubTreeSingleConfig struct {
-	key []byte
-	SubTreeConfig
+func (c *SubTreeConfig) treeConfig(id []byte) *treeConfig {
+	return &treeConfig{
+		parentLeafKey: id,
+		prefix:        appendCopy(c.kindID, id...),
+		SubTreeConfig: c,
+	}
 }
 
-func NewSubTreeSingleConfig(hashFunc arbo.HashFunction, kindID []byte,
-	parentLeafGetRoot GetRootFn, parentLeafSetRoot SetRootFn, maxLevels int,
-	key []byte) *SubTreeSingleConfig {
-	cfg := NewSubTreeConfig(hashFunc, kindID, parentLeafGetRoot, parentLeafSetRoot, maxLevels)
+type SubTreeSingleConfig struct {
+	*SubTreeConfig
+}
+
+func NewSubTreeSingleConfig(hashFunc arbo.HashFunction, kindID []byte, maxLevels int,
+	parentLeafGetRoot GetRootFn, parentLeafSetRoot SetRootFn) *SubTreeSingleConfig {
 	return &SubTreeSingleConfig{
-		key:           key,
-		SubTreeConfig: *cfg,
+		NewSubTreeConfig(hashFunc, kindID, maxLevels, parentLeafGetRoot, parentLeafSetRoot),
 	}
 }
 
 func (c *SubTreeSingleConfig) Key() []byte {
-	return c.key
+	return c.kindID
 }
 
-var mainTree = NewSubTreeSingleConfig(arbo.HashFunctionSha256, nil, nil, nil, 256, nil)
+func (c *SubTreeSingleConfig) treeConfig() *treeConfig {
+	return &treeConfig{
+		parentLeafKey: c.kindID,
+		prefix:        c.kindID,
+		SubTreeConfig: c.SubTreeConfig,
+	}
+}
+
+var mainTreeCfg = NewSubTreeSingleConfig(arbo.HashFunctionSha256, nil, 256, nil, nil).treeConfig()
 
 type StateDB struct {
 	hashLen int
@@ -152,7 +179,7 @@ type StateDB struct {
 
 func NewStateDB(db db.Database) *StateDB {
 	return &StateDB{
-		hashLen: mainTree.hashFunc.Len(),
+		hashLen: mainTreeCfg.hashFunc.Len(),
 		db:      db,
 	}
 }
@@ -215,7 +242,7 @@ func (s *StateDB) Root() ([]byte, error) {
 }
 
 func (s *StateDB) BeginTx() (treeTx *TreeTx, err error) {
-	cfg := mainTree
+	cfg := mainTreeCfg
 	tx := s.db.WriteTx()
 	defer func() {
 		if err != nil {
@@ -229,12 +256,12 @@ func (s *StateDB) BeginTx() (treeTx *TreeTx, err error) {
 		return nil, err
 	}
 	return &TreeTx{
-		tx: tx,
 		TreeUpdate: TreeUpdate{
-			tx:     tx,
-			txTree: txTree,
-			tree:   tree,
-			cfg:    cfg,
+			tx:       tx,
+			txTree:   txTree,
+			tree:     tree,
+			cfg:      cfg,
+			openSubs: make(map[string]*TreeUpdate),
 		},
 	}, nil
 }
@@ -259,7 +286,7 @@ func (t *readOnlyWriteTx) Commit() error {
 }
 
 func (s *StateDB) TreeView() (*TreeView, error) {
-	cfg := mainTree
+	cfg := mainTreeCfg
 
 	tx := s.db.ReadTx()
 	defer tx.Discard()
@@ -284,14 +311,14 @@ func (s *StateDB) TreeView() (*TreeView, error) {
 	return &TreeView{
 		db:   s.db,
 		tree: tree,
-		cfg:  mainTree,
+		cfg:  mainTreeCfg,
 	}, nil
 }
 
 type TreeView struct {
 	db   db.Database
 	tree *tree.Tree
-	cfg  *SubTreeSingleConfig
+	cfg  *treeConfig
 }
 
 func (v *TreeView) NoState() Viewer {
@@ -325,12 +352,45 @@ func (v *TreeView) Dump() ([]byte, error) {
 	return v.tree.Dump()
 }
 
+func (v *TreeView) subTree(cfg *treeConfig) (*TreeView, error) {
+	parentLeaf, err := v.tree.Get(nil, cfg.parentLeafKey)
+	if err != nil {
+		return nil, err
+	}
+	root, err := cfg.parentLeafGetRoot(parentLeaf)
+	if err != nil {
+		return nil, err
+	}
+
+	db := subDB(v.db, cfg.prefix)
+	tx := db.ReadTx()
+	defer tx.Discard()
+	txTree := subReadTx(tx, subKeyTree)
+	defer txTree.Discard()
+	tree, err := tree.New(&readOnlyWriteTx{txTree},
+		tree.Options{DB: subDB(db, subKeyTree), MaxLevels: cfg.maxLevels, HashFunc: cfg.hashFunc})
+	if err == ErrReadOnly {
+		return nil, ErrEmptyTree
+	} else if err != nil {
+		return nil, err
+	}
+	tree, err = tree.FromRoot(root)
+	if err != nil {
+		return nil, err
+	}
+	return &TreeView{
+		db:   db,
+		tree: tree,
+		cfg:  mainTreeCfg,
+	}, nil
+}
+
 func (v *TreeView) SubTreeSingle(c *SubTreeSingleConfig) (*TreeView, error) {
-	panic("TODO")
+	return v.subTree(c.treeConfig())
 }
 
 func (v *TreeView) SubTree(key []byte, c *SubTreeConfig) (*TreeView, error) {
-	panic("TODO")
+	return v.subTree(c.treeConfig(key))
 }
 
 type TreeUpdate struct {
@@ -338,7 +398,8 @@ type TreeUpdate struct {
 	txTree    db.WriteTx
 	dirtyTree bool
 	tree      *tree.Tree
-	cfg       *SubTreeSingleConfig
+	openSubs  map[string]*TreeUpdate
+	cfg       *treeConfig
 }
 
 func (u *TreeUpdate) Get(key []byte) ([]byte, error) {
@@ -383,21 +444,48 @@ func (u *TreeUpdate) Set(key, value []byte) error {
 	return u.tree.Set(u.txTree, key, value)
 }
 
-func (u *TreeUpdate) SubTreeSingle(c *SubTreeSingleConfig) (*TreeUpdate, error) {
-	panic("TODO")
+func (u *TreeUpdate) subTree(cfg *treeConfig) (treeUpdate *TreeUpdate, err error) {
+	if treeUpdate, ok := u.openSubs[string(cfg.prefix)]; ok {
+		return treeUpdate, nil
+	}
+	tx := subWriteTx(u.tx, join(subKeySubTree, cfg.prefix))
+	defer func() {
+		if err != nil {
+			tx.Discard()
+		}
+	}()
+	txTree := subWriteTx(tx, subKeyTree)
+	tree, err := tree.New(txTree,
+		tree.Options{DB: nil, MaxLevels: cfg.maxLevels, HashFunc: cfg.hashFunc})
+	if err != nil {
+		return nil, err
+	}
+	treeUpdate = &TreeUpdate{
+		tx:       tx,
+		txTree:   txTree,
+		tree:     tree,
+		openSubs: make(map[string]*TreeUpdate),
+		cfg:      cfg,
+	}
+	u.openSubs[string(cfg.prefix)] = treeUpdate
+	return treeUpdate, nil
 }
 
-func (u *TreeUpdate) SubTree(key []byte, c *SubTreeConfig) (*TreeView, error) {
-	panic("TODO")
+func (u *TreeUpdate) SubTreeSingle(c *SubTreeSingleConfig) (*TreeUpdate, error) {
+	return u.subTree(c.treeConfig())
+}
+
+func (u *TreeUpdate) SubTree(key []byte, c *SubTreeConfig) (*TreeUpdate, error) {
+	return u.subTree(c.treeConfig(key))
 }
 
 type TreeTx struct {
-	tx db.WriteTx
 	TreeUpdate
 }
 
 func (t *TreeTx) Commit() error {
 	// TODO: Propagate roots of subtrees to parents leaves
+	t.openSubs = make(map[string]*TreeUpdate)
 	version, err := getVersion(t.tx)
 	if err != nil {
 		return err
