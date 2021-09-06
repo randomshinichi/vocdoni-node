@@ -130,6 +130,11 @@ func NewSubTreeConfig(hashFunc arbo.HashFunction, kindID string, maxLevels int,
 	}
 }
 
+// HashFunc returns the hashFunc set for this SubTreeConfig
+func (c *SubTreeConfig) HashFunc() arbo.HashFunction {
+	return c.hashFunc
+}
+
 // treeConfig returns a unified configuration type for opening a singleton
 // subTree that is identified by `id`.  `id` is the path in the parent tree to
 // the leaf that contains the subTree root.
@@ -158,6 +163,11 @@ func NewSubTreeSingleConfig(hashFunc arbo.HashFunction, kindID string, maxLevels
 // the subTree root is stored.  The key is the path of the parent leaf with the root.
 func (c *SubTreeSingleConfig) Key() []byte {
 	return []byte(c.kindID)
+}
+
+// HashFunc returns the hashFunc set for this SubTreeSingleConfig
+func (c *SubTreeSingleConfig) HashFunc() arbo.HashFunction {
+	return c.hashFunc
 }
 
 // treeConfig returns a unified configuration type for opening a subTree.

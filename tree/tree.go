@@ -223,3 +223,10 @@ func (t *Tree) Dump() ([]byte, error) {
 func (t *Tree) ImportDump(b []byte) error {
 	return t.tree.ImportDump(b)
 }
+
+func IsNotFound(err error) bool {
+	if err == db.ErrKeyNotFound || err == arbo.ErrKeyNotFound {
+		return true
+	}
+	return false
+}

@@ -3,7 +3,7 @@ module go.vocdoni.io/dvote
 go 1.16
 
 // For testing purposes while dvote-protobuf becomes stable
-// replace go.vocdoni.io/proto => ../dvote-protobuf
+replace go.vocdoni.io/proto => ../dvote-protobuf
 
 replace github.com/timshannon/badgerhold/v3 => github.com/vocdoni/badgerhold/v3 v3.0.0-20210514115050-2d704df3456f
 
