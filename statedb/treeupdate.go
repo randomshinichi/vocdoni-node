@@ -48,7 +48,7 @@ type TreeUpdate struct {
 	// corresponding parent leafs up to the mainTree.
 	openSubs map[string]*TreeUpdate
 	// cfg points to this TreeUpdate configuration.
-	cfg *treeConfig
+	cfg *SubTreeConfig
 }
 
 // Get returns the value at key in this tree.  `key` is the path of the leaf,
@@ -111,7 +111,7 @@ func (u *TreeUpdate) Set(key, value []byte) error {
 // u.tx appending the prefix `subKeySubTree | cfg.prefix`.  In turn
 // the treeUpdate.tree uses the db.WriteTx from treeUpdate.tx appending the
 // prefix `'/' | subKeyTree`.
-func (u *TreeUpdate) subTree(cfg *treeConfig) (treeUpdate *TreeUpdate, err error) {
+func (u *TreeUpdate) SubTree(cfg *SubTreeConfig) (treeUpdate *TreeUpdate, err error) {
 	if treeUpdate, ok := u.openSubs[string(cfg.prefix)]; ok {
 		return treeUpdate, nil
 	}
@@ -140,16 +140,62 @@ func (u *TreeUpdate) subTree(cfg *treeConfig) (treeUpdate *TreeUpdate, err error
 	return treeUpdate, nil
 }
 
-// SubTreeSingle returns a TreeUpdate of a singleton SubTree whose root is stored
-// in the leaf with `cfg.Key()`, and is parametrized by `cfg`.
-func (u *TreeUpdate) SubTreeSingle(cfg *SubTreeSingleConfig) (*TreeUpdate, error) {
-	return u.subTree(cfg.treeConfig())
+func (u *TreeUpdate) DeepSubTree(cfgs []*SubTreeConfig) (treeUpdate *TreeUpdate, err error) {
+	tree := u
+	for _, cfg := range cfgs {
+		if tree, err = tree.SubTree(cfg); err != nil {
+			return nil, err
+		}
+	}
+	return tree, nil
 }
 
-// SubTree returns a TreeUpdate of a non-singleton SubTree whose root is stored
-// in the leaf with `key`, and is parametrized by `cfg`.
-func (u *TreeUpdate) SubTree(key []byte, cfg *SubTreeConfig) (*TreeUpdate, error) {
-	return u.subTree(cfg.treeConfig(key))
+func (u *TreeUpdate) DeepGet(cfgs []*SubTreeConfig, key []byte) ([]byte, error) {
+	tree, err := u.DeepSubTree(cfgs)
+	if err != nil {
+		return nil, err
+	}
+	return tree.Get(key)
+}
+
+func (u *TreeUpdate) DeepAdd(cfgs []*SubTreeConfig, key, value []byte) error {
+	tree, err := u.DeepSubTree(cfgs)
+	if err != nil {
+		return err
+	}
+	return tree.Add(key, value)
+}
+
+func (u *TreeUpdate) DeepSet(cfgs []*SubTreeConfig, key, value []byte) error {
+	tree, err := u.DeepSubTree(cfgs)
+	if err != nil {
+		return err
+	}
+	return tree.Set(key, value)
+}
+
+func (u *TreeUpdate) AsTreeView() TreeViewer {
+	return &treeUpdateView{u}
+}
+
+type treeUpdateView struct {
+	*TreeUpdate
+}
+
+var _ TreeViewer = (*treeUpdateView)(nil)
+
+func (v *treeUpdateView) NoState() Viewer {
+	return v.TreeUpdate.NoState()
+}
+
+func (v *treeUpdateView) SubTree(c *SubTreeConfig) (TreeViewer, error) {
+	tu, err := v.TreeUpdate.SubTree(c)
+	return &treeUpdateView{tu}, err
+}
+
+func (v *treeUpdateView) DeepSubTree(cfgs []*SubTreeConfig) (TreeViewer, error) {
+	tu, err := v.TreeUpdate.DeepSubTree(cfgs)
+	return &treeUpdateView{tu}, err
 }
 
 // TreeTx is a wrapper over TreeUpdate that includes the Commit and Discard

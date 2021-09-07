@@ -27,6 +27,20 @@ func (v *databaseViewer) Get(key []byte) ([]byte, error) {
 	return tx.Get(key)
 }
 
+type TreeViewer interface {
+	NoState() Viewer
+	Get(key []byte) ([]byte, error)
+	DeepGet(cfgs []*SubTreeConfig, key []byte) ([]byte, error)
+	Iterate(callback func(key, value []byte) bool) error
+	Root() ([]byte, error)
+	Size() (uint64, error)
+	GenProof(key []byte) ([]byte, []byte, error)
+	SubTree(c *SubTreeConfig) (TreeViewer, error)
+	DeepSubTree(cfgs []*SubTreeConfig) (TreeViewer, error)
+}
+
+var _ TreeViewer = (*TreeView)(nil)
+
 // TreeView is an opened tree that can only be read.
 type TreeView struct {
 	// db is db.Database where the contents of this TreeView are stored.
@@ -41,7 +55,7 @@ type TreeView struct {
 	// tree is the Arbo merkle tree in this TreeView.
 	tree *tree.Tree
 	// cfg points to this TreeView configuration.
-	cfg *treeConfig
+	cfg *SubTreeConfig
 }
 
 // NoState returns a read-only key-value database associated with this tree
@@ -92,7 +106,7 @@ func (v *TreeView) Dump() ([]byte, error) {
 // the treeView.db uses the db.Database from treeView.db appending the
 // prefix `'/' | subKeyTree`.  The treeView.tree is opened as a snapshot from
 // the root found in its parent leaf
-func (v *TreeView) subTree(cfg *treeConfig) (treeView *TreeView, err error) {
+func (v *TreeView) SubTree(cfg *SubTreeConfig) (treeView TreeViewer, err error) {
 	parentLeaf, err := v.tree.Get(nil, cfg.parentLeafKey)
 	if err != nil {
 		return nil, err
@@ -125,14 +139,20 @@ func (v *TreeView) subTree(cfg *treeConfig) (treeView *TreeView, err error) {
 	}, nil
 }
 
-// SubTreeSingle returns a TreeView of a singleton SubTree whose root is stored
-// in the leaf with `cfg.Key()`, and is parametrized by `cfg`.
-func (v *TreeView) SubTreeSingle(c *SubTreeSingleConfig) (*TreeView, error) {
-	return v.subTree(c.treeConfig())
+func (v *TreeView) DeepSubTree(cfgs []*SubTreeConfig) (treeUpdate TreeViewer, err error) {
+	var tree TreeViewer = v
+	for _, cfg := range cfgs {
+		if tree, err = tree.SubTree(cfg); err != nil {
+			return nil, err
+		}
+	}
+	return tree, nil
 }
 
-// SubTree returns a TreeView of a non-singleton SubTree whose root is stored
-// in the leaf with `key`, and is parametrized by `cfg`.
-func (v *TreeView) SubTree(key []byte, c *SubTreeConfig) (*TreeView, error) {
-	return v.subTree(c.treeConfig(key))
+func (v *TreeView) DeepGet(cfgs []*SubTreeConfig, key []byte) ([]byte, error) {
+	tree, err := v.DeepSubTree(cfgs)
+	if err != nil {
+		return nil, err
+	}
+	return tree.Get(key)
 }

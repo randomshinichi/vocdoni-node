@@ -162,7 +162,7 @@ var singleCfg = NewSubTreeSingleConfig(
 
 // multiACfg is a test configuration for a non-singleton subtTree whose root is
 // stored in a leaf alongside another root (multiB)
-var multiACfg = NewSubTreeConfig(
+var multiACfg = NewSubTreeNonSingleConfig(
 	arbo.HashFunctionSha256,
 	"multia",
 	256,
@@ -183,7 +183,7 @@ var multiACfg = NewSubTreeConfig(
 
 // multiBCfg is a test configuration for a non-singleton subtTree whose root is
 // stored in a leaf alongside another root (multiA)
-var multiBCfg = NewSubTreeConfig(
+var multiBCfg = NewSubTreeNonSingleConfig(
 	arbo.HashFunctionPoseidon,
 	"multib",
 	256,
@@ -218,7 +218,7 @@ func TestSubTree(t *testing.T) {
 	// Crete the leaf in mainTree which contains the root of the single
 	qt.Assert(t, mainTree.Add(singleCfg.Key(), emptyHash), qt.IsNil)
 	// treePrint(mainTree.tree, mainTree.txTree, "main")
-	single, err := mainTree.SubTreeSingle(singleCfg)
+	single, err := mainTree.SubTree(singleCfg)
 	qt.Assert(t, err, qt.IsNil)
 	// We add two key-values to the single tree
 	qt.Assert(t, single.Add([]byte("key0"), []byte("value0")), qt.IsNil)
@@ -231,11 +231,11 @@ func TestSubTree(t *testing.T) {
 	// (multiA_id, multiB_id)
 	qt.Assert(t, mainTree.Add(id, make([]byte, 32*2)), qt.IsNil)
 	// treePrint(mainTree.tree, mainTree.txTree, "main")
-	multiA, err := mainTree.SubTree(id, multiACfg)
+	multiA, err := mainTree.SubTree(multiACfg.WithKey(id))
 	qt.Assert(t, err, qt.IsNil)
 	// We add one key-value to multiA
 	qt.Assert(t, multiA.Add([]byte("key2"), []byte("value2")), qt.IsNil)
-	multiB, err := mainTree.SubTree(id, multiBCfg)
+	multiB, err := mainTree.SubTree(multiBCfg.WithKey(id))
 	qt.Assert(t, err, qt.IsNil)
 	// We add one key-value to multiB
 	qt.Assert(t, multiB.Add([]byte("key3"), []byte("value3")), qt.IsNil)
@@ -251,7 +251,7 @@ func TestSubTree(t *testing.T) {
 		qt.Assert(t, err, qt.IsNil)
 
 		// Expect the two key-values in single
-		single, err := mainTreeView.SubTreeSingle(singleCfg)
+		single, err := mainTreeView.SubTree(singleCfg)
 		qt.Assert(t, err, qt.IsNil)
 		v0, err := single.Get([]byte("key0"))
 		qt.Assert(t, err, qt.IsNil)
@@ -261,7 +261,7 @@ func TestSubTree(t *testing.T) {
 		qt.Assert(t, v1, qt.DeepEquals, []byte("value1"))
 
 		// Expect the key-value in multiA
-		multiA, err := mainTreeView.SubTree(id, multiACfg)
+		multiA, err := mainTreeView.SubTree(multiACfg.WithKey(id))
 		qt.Assert(t, err, qt.IsNil)
 		// dumpPrint(multiA.tree.DB())
 		// treePrint(multiA.tree, nil, "multiA")
@@ -270,7 +270,7 @@ func TestSubTree(t *testing.T) {
 		qt.Assert(t, v2, qt.DeepEquals, []byte("value2"))
 
 		// Expect the key-value in multiB
-		multiB, err := mainTreeView.SubTree(id, multiBCfg)
+		multiB, err := mainTreeView.SubTree(multiBCfg.WithKey(id))
 		qt.Assert(t, err, qt.IsNil)
 		v3, err := multiB.Get([]byte("key3"))
 		qt.Assert(t, err, qt.IsNil)
@@ -288,20 +288,20 @@ func TestSubTree(t *testing.T) {
 		qt.Assert(t, err, qt.IsNil)
 
 		// Expect that mainTree's leaf for single == single.Root
-		single, err := mainTreeView.SubTreeSingle(singleCfg)
+		single, err := mainTreeView.SubTree(singleCfg)
 		qt.Assert(t, err, qt.IsNil)
 		singleRoot, err := single.Root()
 		qt.Assert(t, err, qt.IsNil)
 		qt.Assert(t, singleParentLeaf, qt.DeepEquals, singleRoot)
 
 		// Expect that mainTree's leaf for id == multiA.Root | multiB.Root
-		multiA, err := mainTreeView.SubTree(id, multiACfg)
+		multiA, err := mainTreeView.SubTree(multiACfg.WithKey(id))
 		qt.Assert(t, err, qt.IsNil)
 		multiARoot, err := multiA.Root()
 		qt.Assert(t, err, qt.IsNil)
 		qt.Assert(t, multiParentLeaf[:32], qt.DeepEquals, multiARoot)
 
-		multiB, err := mainTreeView.SubTree(id, multiBCfg)
+		multiB, err := mainTreeView.SubTree(multiBCfg.WithKey(id))
 		qt.Assert(t, err, qt.IsNil)
 		multiBRoot, err := multiB.Root()
 		qt.Assert(t, err, qt.IsNil)
@@ -327,7 +327,7 @@ func TestNoState(t *testing.T) {
 	mainTreeRoot, err := mainTree.Root()
 	qt.Assert(t, err, qt.IsNil)
 
-	single, err := mainTree.SubTreeSingle(singleCfg)
+	single, err := mainTree.SubTree(singleCfg)
 	qt.Assert(t, err, qt.IsNil)
 	singleRoot, err := single.Root()
 	qt.Assert(t, err, qt.IsNil)
@@ -358,7 +358,7 @@ func TestNoState(t *testing.T) {
 		qt.Assert(t, v0, qt.DeepEquals, []byte("value0"))
 
 		// single root hasn't changed
-		single, err := mainTreeView.SubTreeSingle(singleCfg)
+		single, err := mainTreeView.SubTree(singleCfg)
 		qt.Assert(t, err, qt.IsNil)
 		singleRoot1, err := single.Root()
 		qt.Assert(t, err, qt.IsNil)
