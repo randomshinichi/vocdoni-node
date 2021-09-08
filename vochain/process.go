@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"go.vocdoni.io/dvote/log"
+	"go.vocdoni.io/dvote/statedb"
 	"go.vocdoni.io/dvote/types"
 	"go.vocdoni.io/proto/build/go/models"
 	"google.golang.org/protobuf/proto"
@@ -17,7 +18,7 @@ func (v *State) AddProcess(p *models.Process) error {
 		return fmt.Errorf("cannot marshal process bytes: %w", err)
 	}
 	v.Lock()
-	err = v.Store.Tree(ProcessTree).Add(p.ProcessId, newProcessBytes)
+	err = v.Tx.DeepAdd([]*statedb.TreeConfig{ProcessesCfg}, p.ProcessId, newProcessBytes)
 	v.Unlock()
 	if err != nil {
 		return err
@@ -47,7 +48,7 @@ func (v *State) CancelProcess(pid []byte) error { // LEGACY
 		return fmt.Errorf("cannot marshal updated process bytes: %w", err)
 	}
 	v.Lock()
-	err = v.Store.Tree(ProcessTree).Add(pid, updatedProcessBytes)
+	err = v.Tx.DeepSet([]*statedb.TreeConfig{ProcessesCfg}, pid, updatedProcessBytes)
 	v.Unlock()
 	if err != nil {
 		return err
@@ -63,15 +64,8 @@ func (v *State) Process(pid []byte, isQuery bool) (*models.Process, error) {
 	var processBytes []byte
 	var err error
 	v.RLock()
-	if isQuery {
-		if processBytes, err = v.Store.ImmutableTree(ProcessTree).Get(pid); err != nil {
-			return nil, err
-		}
-	} else {
-		if processBytes, err = v.Store.Tree(ProcessTree).Get(pid); err != nil {
-			return nil, err
-		}
-	}
+	processBytes, err = v.mainTreeViewer(isQuery).
+		DeepGet([]*statedb.TreeConfig{ProcessesCfg}, pid)
 	v.RUnlock()
 	if processBytes == nil {
 		return nil, ErrProcessNotFound
@@ -85,13 +79,20 @@ func (v *State) Process(pid []byte, isQuery bool) (*models.Process, error) {
 }
 
 // CountProcesses returns the overall number of processes the vochain has
-func (v *State) CountProcesses(isQuery bool) int64 {
-	v.RLock()
-	defer v.RUnlock()
-	if isQuery {
-		return int64(v.Store.ImmutableTree(ProcessTree).Count())
+func (v *State) CountProcesses(isQuery bool) (uint64, error) {
+	// TODO: Once statedb.TreeView.Size() works, replace this by that.
+	processesTree, err := v.mainTreeViewer(isQuery).SubTree(ProcessesCfg)
+	if err != nil {
+		return 0, err
 	}
-	return int64(v.Store.Tree(ProcessTree).Count())
+	var count uint64
+	if err := processesTree.Iterate(func(key []byte, value []byte) bool {
+		count++
+		return false
+	}); err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // set process stores in the database the process
@@ -105,7 +106,7 @@ func (v *State) setProcess(process *models.Process, pid []byte) error {
 	}
 	v.Lock()
 	defer v.Unlock()
-	if err := v.Store.Tree(ProcessTree).Add(pid, updatedProcessBytes); err != nil {
+	if err := v.Tx.DeepSet([]*statedb.TreeConfig{ProcessesCfg}, pid, updatedProcessBytes); err != nil {
 		return err
 	}
 	return nil
@@ -315,12 +316,8 @@ func NewProcessTxCheck(vtx *models.Tx, txBytes,
 		return nil, fmt.Errorf("cannot check authorization against a nil or empty oracle list")
 	}
 
-	header := state.Header(false)
-	if header == nil {
-		return nil, fmt.Errorf("cannot fetch state header")
-	}
 	// start and endblock sanity check
-	if int64(tx.Process.StartBlock) < header.Height {
+	if int64(tx.Process.StartBlock) < state.Header(false).Height {
 		return nil, fmt.Errorf(
 			"cannot add process with start block lower than or equal to the current height")
 	}

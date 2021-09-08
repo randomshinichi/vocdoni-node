@@ -30,13 +30,13 @@ func (v *databaseViewer) Get(key []byte) ([]byte, error) {
 type TreeViewer interface {
 	NoState() Viewer
 	Get(key []byte) ([]byte, error)
-	DeepGet(cfgs []*SubTreeConfig, key []byte) ([]byte, error)
+	DeepGet(cfgs []*TreeConfig, key []byte) ([]byte, error)
 	Iterate(callback func(key, value []byte) bool) error
 	Root() ([]byte, error)
 	Size() (uint64, error)
 	GenProof(key []byte) ([]byte, []byte, error)
-	SubTree(c *SubTreeConfig) (TreeViewer, error)
-	DeepSubTree(cfgs []*SubTreeConfig) (TreeViewer, error)
+	SubTree(c *TreeConfig) (TreeViewer, error)
+	DeepSubTree(cfgs []*TreeConfig) (TreeViewer, error)
 }
 
 var _ TreeViewer = (*TreeView)(nil)
@@ -55,7 +55,7 @@ type TreeView struct {
 	// tree is the Arbo merkle tree in this TreeView.
 	tree *tree.Tree
 	// cfg points to this TreeView configuration.
-	cfg *SubTreeConfig
+	cfg *TreeConfig
 }
 
 // NoState returns a read-only key-value database associated with this tree
@@ -106,7 +106,7 @@ func (v *TreeView) Dump() ([]byte, error) {
 // the treeView.db uses the db.Database from treeView.db appending the
 // prefix `'/' | subKeyTree`.  The treeView.tree is opened as a snapshot from
 // the root found in its parent leaf
-func (v *TreeView) SubTree(cfg *SubTreeConfig) (treeView TreeViewer, err error) {
+func (v *TreeView) SubTree(cfg *TreeConfig) (treeView TreeViewer, err error) {
 	parentLeaf, err := v.tree.Get(nil, cfg.parentLeafKey)
 	if err != nil {
 		return nil, err
@@ -139,7 +139,7 @@ func (v *TreeView) SubTree(cfg *SubTreeConfig) (treeView TreeViewer, err error) 
 	}, nil
 }
 
-func (v *TreeView) DeepSubTree(cfgs []*SubTreeConfig) (treeUpdate TreeViewer, err error) {
+func (v *TreeView) DeepSubTree(cfgs []*TreeConfig) (treeUpdate TreeViewer, err error) {
 	var tree TreeViewer = v
 	for _, cfg := range cfgs {
 		if tree, err = tree.SubTree(cfg); err != nil {
@@ -149,7 +149,7 @@ func (v *TreeView) DeepSubTree(cfgs []*SubTreeConfig) (treeUpdate TreeViewer, er
 	return tree, nil
 }
 
-func (v *TreeView) DeepGet(cfgs []*SubTreeConfig, key []byte) ([]byte, error) {
+func (v *TreeView) DeepGet(cfgs []*TreeConfig, key []byte) ([]byte, error) {
 	tree, err := v.DeepSubTree(cfgs)
 	if err != nil {
 		return nil, err

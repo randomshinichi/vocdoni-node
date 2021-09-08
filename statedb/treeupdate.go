@@ -48,7 +48,7 @@ type TreeUpdate struct {
 	// corresponding parent leafs up to the mainTree.
 	openSubs map[string]*TreeUpdate
 	// cfg points to this TreeUpdate configuration.
-	cfg *SubTreeConfig
+	cfg *TreeConfig
 }
 
 // Get returns the value at key in this tree.  `key` is the path of the leaf,
@@ -111,7 +111,7 @@ func (u *TreeUpdate) Set(key, value []byte) error {
 // u.tx appending the prefix `subKeySubTree | cfg.prefix`.  In turn
 // the treeUpdate.tree uses the db.WriteTx from treeUpdate.tx appending the
 // prefix `'/' | subKeyTree`.
-func (u *TreeUpdate) SubTree(cfg *SubTreeConfig) (treeUpdate *TreeUpdate, err error) {
+func (u *TreeUpdate) SubTree(cfg *TreeConfig) (treeUpdate *TreeUpdate, err error) {
 	if treeUpdate, ok := u.openSubs[string(cfg.prefix)]; ok {
 		return treeUpdate, nil
 	}
@@ -140,7 +140,7 @@ func (u *TreeUpdate) SubTree(cfg *SubTreeConfig) (treeUpdate *TreeUpdate, err er
 	return treeUpdate, nil
 }
 
-func (u *TreeUpdate) DeepSubTree(cfgs []*SubTreeConfig) (treeUpdate *TreeUpdate, err error) {
+func (u *TreeUpdate) DeepSubTree(cfgs []*TreeConfig) (treeUpdate *TreeUpdate, err error) {
 	tree := u
 	for _, cfg := range cfgs {
 		if tree, err = tree.SubTree(cfg); err != nil {
@@ -150,7 +150,7 @@ func (u *TreeUpdate) DeepSubTree(cfgs []*SubTreeConfig) (treeUpdate *TreeUpdate,
 	return tree, nil
 }
 
-func (u *TreeUpdate) DeepGet(cfgs []*SubTreeConfig, key []byte) ([]byte, error) {
+func (u *TreeUpdate) DeepGet(cfgs []*TreeConfig, key []byte) ([]byte, error) {
 	tree, err := u.DeepSubTree(cfgs)
 	if err != nil {
 		return nil, err
@@ -158,7 +158,7 @@ func (u *TreeUpdate) DeepGet(cfgs []*SubTreeConfig, key []byte) ([]byte, error) 
 	return tree.Get(key)
 }
 
-func (u *TreeUpdate) DeepAdd(cfgs []*SubTreeConfig, key, value []byte) error {
+func (u *TreeUpdate) DeepAdd(cfgs []*TreeConfig, key, value []byte) error {
 	tree, err := u.DeepSubTree(cfgs)
 	if err != nil {
 		return err
@@ -166,7 +166,7 @@ func (u *TreeUpdate) DeepAdd(cfgs []*SubTreeConfig, key, value []byte) error {
 	return tree.Add(key, value)
 }
 
-func (u *TreeUpdate) DeepSet(cfgs []*SubTreeConfig, key, value []byte) error {
+func (u *TreeUpdate) DeepSet(cfgs []*TreeConfig, key, value []byte) error {
 	tree, err := u.DeepSubTree(cfgs)
 	if err != nil {
 		return err
@@ -188,12 +188,12 @@ func (v *treeUpdateView) NoState() Viewer {
 	return v.TreeUpdate.NoState()
 }
 
-func (v *treeUpdateView) SubTree(c *SubTreeConfig) (TreeViewer, error) {
+func (v *treeUpdateView) SubTree(c *TreeConfig) (TreeViewer, error) {
 	tu, err := v.TreeUpdate.SubTree(c)
 	return &treeUpdateView{tu}, err
 }
 
-func (v *treeUpdateView) DeepSubTree(cfgs []*SubTreeConfig) (TreeViewer, error) {
+func (v *treeUpdateView) DeepSubTree(cfgs []*TreeConfig) (TreeViewer, error) {
 	tu, err := v.TreeUpdate.DeepSubTree(cfgs)
 	return &treeUpdateView{tu}, err
 }

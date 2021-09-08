@@ -142,7 +142,7 @@ func TestStateDB(t *testing.T) {
 }
 
 // singleCfg is a test configuration for a singleton subTree
-var singleCfg = NewSubTreeSingleConfig(
+var singleCfg = NewTreeSingleConfig(
 	arbo.HashFunctionSha256,
 	"single",
 	256,
@@ -162,7 +162,7 @@ var singleCfg = NewSubTreeSingleConfig(
 
 // multiACfg is a test configuration for a non-singleton subtTree whose root is
 // stored in a leaf alongside another root (multiB)
-var multiACfg = NewSubTreeNonSingleConfig(
+var multiACfg = NewTreeNonSingleConfig(
 	arbo.HashFunctionSha256,
 	"multia",
 	256,
@@ -183,7 +183,7 @@ var multiACfg = NewSubTreeNonSingleConfig(
 
 // multiBCfg is a test configuration for a non-singleton subtTree whose root is
 // stored in a leaf alongside another root (multiA)
-var multiBCfg = NewSubTreeNonSingleConfig(
+var multiBCfg = NewTreeNonSingleConfig(
 	arbo.HashFunctionPoseidon,
 	"multib",
 	256,
