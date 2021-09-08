@@ -6,19 +6,23 @@ import (
 
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/statedb"
+	"go.vocdoni.io/dvote/tree"
 	"go.vocdoni.io/dvote/types"
 	"go.vocdoni.io/proto/build/go/models"
 	"google.golang.org/protobuf/proto"
 )
 
+var emptyVotesRoot = make([]byte, VotesCfg.HashFunc().Len())
+
 // AddProcess adds or overides a new process to vochain
 func (v *State) AddProcess(p *models.Process) error {
-	newProcessBytes, err := proto.Marshal(p)
+	newProcessBytes, err := proto.Marshal(
+		&models.StateDBProcess{Process: p, VotesRoot: emptyVotesRoot})
 	if err != nil {
 		return fmt.Errorf("cannot marshal process bytes: %w", err)
 	}
 	v.Lock()
-	err = v.Tx.DeepAdd([]*statedb.TreeConfig{ProcessesCfg}, p.ProcessId, newProcessBytes)
+	err = v.Tx.DeepSet([]*statedb.TreeConfig{ProcessesCfg}, p.ProcessId, newProcessBytes)
 	v.Unlock()
 	if err != nil {
 		return err
@@ -70,12 +74,12 @@ func (v *State) Process(pid []byte, isQuery bool) (*models.Process, error) {
 	if processBytes == nil {
 		return nil, ErrProcessNotFound
 	}
-	process := new(models.Process)
-	err = proto.Unmarshal(processBytes, process)
+	var process models.StateDBProcess
+	err = proto.Unmarshal(processBytes, &process)
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal process (%s): %w", pid, err)
 	}
-	return process, nil
+	return process.Process, nil
 }
 
 // CountProcesses returns the overall number of processes the vochain has
@@ -96,17 +100,32 @@ func (v *State) CountProcesses(isQuery bool) (uint64, error) {
 }
 
 // set process stores in the database the process
-func (v *State) setProcess(process *models.Process, pid []byte) error {
-	if process == nil || len(process.ProcessId) != types.ProcessIDsize {
+func (v *State) updateProcess(p *models.Process, pid []byte) error {
+	if p == nil || len(p.ProcessId) != types.ProcessIDsize {
 		return ErrProcessNotFound
-	}
-	updatedProcessBytes, err := proto.Marshal(process)
-	if err != nil {
-		return fmt.Errorf("cannot marshal updated process bytes: %w", err)
 	}
 	v.Lock()
 	defer v.Unlock()
-	if err := v.Tx.DeepSet([]*statedb.TreeConfig{ProcessesCfg}, pid, updatedProcessBytes); err != nil {
+	processesTree, err := v.Tx.SubTree(ProcessesCfg)
+	if err != nil {
+		return err
+	}
+	processBytes, err := processesTree.Get(pid)
+	if tree.IsNotFound(err) {
+		return ErrProcessNotFound
+	} else if err != nil {
+		return err
+	}
+	var process models.StateDBProcess
+	if err := proto.Unmarshal(processBytes, &process); err != nil {
+		return err
+	}
+	updatedProcessBytes, err := proto.Marshal(
+		&models.StateDBProcess{Process: p, VotesRoot: process.VotesRoot})
+	if err != nil {
+		return fmt.Errorf("cannot marshal updated process bytes: %w", err)
+	}
+	if err := processesTree.Set(pid, updatedProcessBytes); err != nil {
 		return err
 	}
 	return nil
@@ -181,7 +200,7 @@ func (v *State) SetProcessStatus(pid []byte, newstatus models.ProcessStatus, com
 
 	if commit {
 		process.Status = newstatus
-		if err := v.setProcess(process, process.ProcessId); err != nil {
+		if err := v.updateProcess(process, process.ProcessId); err != nil {
 			return err
 		}
 		for _, l := range v.eventListeners {
@@ -222,7 +241,7 @@ func (v *State) SetProcessResults(pid []byte, result *models.ProcessResult, comm
 	if commit {
 		process.Results = result
 		process.Status = models.ProcessStatus_RESULTS
-		if err := v.setProcess(process, process.ProcessId); err != nil {
+		if err := v.updateProcess(process, process.ProcessId); err != nil {
 			return err
 		}
 		// Call event listeners
@@ -284,7 +303,7 @@ func (v *State) SetProcessCensus(pid, censusRoot []byte, censusURI string, commi
 	if commit {
 		process.CensusRoot = censusRoot
 		process.CensusURI = &censusURI
-		if err := v.setProcess(process, process.ProcessId); err != nil {
+		if err := v.updateProcess(process, process.ProcessId); err != nil {
 			return err
 		}
 	}

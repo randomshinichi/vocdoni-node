@@ -74,6 +74,7 @@ func processGetVotesRoot(value []byte) ([]byte, error) {
 
 func processSetVotesRoot(value []byte, root []byte) ([]byte, error) {
 	var proc models.StateDBProcess
+	fmt.Printf("DBG processSetVotesRoot %x\n", value)
 	if err := proto.Unmarshal(value, &proc); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal StateDBProcess: %w", err)
 	}
@@ -444,7 +445,7 @@ func (v *State) AddProcessKeys(tx *models.AdminTx) error {
 		process.KeyIndex = new(uint32)
 	}
 	*process.KeyIndex++
-	if err := v.setProcess(process, tx.ProcessId); err != nil {
+	if err := v.updateProcess(process, tx.ProcessId); err != nil {
 		return err
 	}
 	for _, l := range v.eventListeners {
@@ -481,7 +482,7 @@ func (v *State) RevealProcessKeys(tx *models.AdminTx) error {
 			*tx.KeyIndex, tx.ProcessId, tx.EncryptionPrivateKey)
 	}
 	*process.KeyIndex--
-	if err := v.setProcess(process, tx.ProcessId); err != nil {
+	if err := v.updateProcess(process, tx.ProcessId); err != nil {
 		return err
 	}
 	for _, l := range v.eventListeners {

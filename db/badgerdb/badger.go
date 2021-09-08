@@ -61,7 +61,7 @@ func toString(v []byte) string {
 func (tx ReadTx) Get(k []byte) ([]byte, error) {
 	item, err := tx.tx.Get(k)
 	if err == badger.ErrKeyNotFound {
-		fmt.Printf("DBG key not found: %v\n", toString(k))
+		// fmt.Printf("DBG key not found: %v\n", toString(k))
 		// debug.PrintStack() // DBG
 		return nil, db.ErrKeyNotFound
 	}
