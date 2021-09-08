@@ -1,7 +1,9 @@
 package badgerdb
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/dgraph-io/badger/v3"
 	"go.vocdoni.io/dvote/db"
@@ -29,10 +31,38 @@ type WriteTx struct {
 var _ db.ReadTx = (*WriteTx)(nil)
 var _ db.WriteTx = (*WriteTx)(nil)
 
+//lint:ignore U1000 debug function
+func toString(v []byte) string {
+	elems := strings.Split(string(v), "/")
+	elemsClean := make([]string, len(elems))
+	for i, elem := range elems {
+		asciiPrint := true
+		for _, b := range []byte(elem) {
+			if b < 0x20 || 0x7e < b {
+				asciiPrint = false
+				break
+			}
+		}
+		var elemClean string
+		if asciiPrint {
+			elemClean = string(elem)
+		} else {
+			elemClean = fmt.Sprintf("\\x%x", elem)
+		}
+		if len(elemClean) > 10 {
+			elemClean = fmt.Sprintf("%v..", elemClean[:10])
+		}
+		elemsClean[i] = elemClean
+	}
+	return strings.Join(elemsClean, "/")
+}
+
 // Get implements the db.ReadTx.Get interface method
 func (tx ReadTx) Get(k []byte) ([]byte, error) {
 	item, err := tx.tx.Get(k)
 	if err == badger.ErrKeyNotFound {
+		fmt.Printf("DBG key not found: %v\n", toString(k))
+		// debug.PrintStack() // DBG
 		return nil, db.ErrKeyNotFound
 	}
 	if err != nil {

@@ -3,6 +3,7 @@ package statedb
 import (
 	"path"
 
+	"github.com/vocdoni/arbo"
 	"go.vocdoni.io/dvote/db"
 	"go.vocdoni.io/dvote/tree"
 )
@@ -72,9 +73,19 @@ func (v *TreeView) Get(key []byte) ([]byte, error) {
 	return v.tree.Get(nil, key)
 }
 
-// Iterate iterates over all nodes of this tree.
-func (v *TreeView) Iterate(callback func(key, value []byte) bool) error {
+// IterateNodes iterates over all nodes of this tree.  The key and value are
+// the Arbo database representation of a node, and don't match the key value
+// used in Get, Add and Set.
+func (v *TreeView) IterateNodes(callback func(key, value []byte) bool) error {
 	return v.tree.Iterate(nil, callback)
+}
+
+// Iterate iterates over all leafs of this tree.
+func (v *TreeView) Iterate(callback func(key, value []byte) bool) error {
+	return v.tree.Iterate(nil, func(key, value []byte) bool {
+		leafK, leafV := arbo.ReadLeafValue(value)
+		return callback(leafK, leafV)
+	})
 }
 
 // Root returns the root of the tree, which cryptographically summarises the

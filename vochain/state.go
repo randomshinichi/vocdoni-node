@@ -259,6 +259,18 @@ func initStateDB(dataDir string) (*statedb.StateDB, error) {
 		make([]byte, ProcessesCfg.HashFunc().Len())); err != nil {
 		return nil, err
 	}
+	header := models.TendermintHeader{
+		Height:  0,
+		AppHash: []byte{},
+		ChainId: "empty",
+	}
+	headerBytes, err := proto.Marshal(&header)
+	if err != nil {
+		return nil, err
+	}
+	if err := update.Add(headerKey, headerBytes); err != nil {
+		return nil, err
+	}
 	return sdb, update.Commit()
 }
 
@@ -528,20 +540,24 @@ func (v *State) Envelope(processID, nullifier []byte, isQuery bool) (_ []byte, e
 		}
 	}()
 
-	var voteHash []byte
 	vid, err := v.voteID(processID, nullifier)
 	if err != nil {
 		return nil, err
 	}
 	v.RLock()
 	defer v.RUnlock() // needs to be deferred due to the recover above
-	if voteHash, err = v.mainTreeViewer(isQuery).DeepGet(
-		[]*statedb.TreeConfig{ProcessesCfg, VotesCfg.WithKey(processID)},
-		vid); err != nil {
+	votesTree, err := v.mainTreeViewer(isQuery).DeepSubTree(
+		[]*statedb.TreeConfig{ProcessesCfg, VotesCfg.WithKey(processID)})
+	if tree.IsNotFound(err) {
+		return nil, ErrProcessNotFound
+	} else if err != nil {
 		return nil, err
 	}
-	if voteHash == nil {
+	voteHash, err := votesTree.Get(vid)
+	if tree.IsNotFound(err) {
 		return nil, ErrVoteDoesNotExist
+	} else if err != nil {
+		return nil, err
 	}
 	return voteHash, nil
 }
