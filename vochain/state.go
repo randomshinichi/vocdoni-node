@@ -44,6 +44,8 @@ func rootLeafSetRoot(value []byte, root []byte) ([]byte, error) {
 	return root, nil
 }
 
+// processGetCensusRoot is the GetRootFn function to get the census root of a
+// process leaf.
 func processGetCensusRoot(value []byte) ([]byte, error) {
 	var sdbProc models.StateDBProcess
 	if err := proto.Unmarshal(value, &sdbProc); err != nil {
@@ -52,6 +54,8 @@ func processGetCensusRoot(value []byte) ([]byte, error) {
 	return sdbProc.Process.CensusRoot, nil
 }
 
+// processSetCensusRoot is the SetRootFn function to set the census root of a
+// process leaf.
 func processSetCensusRoot(value []byte, root []byte) ([]byte, error) {
 	var sdbProc models.StateDBProcess
 	if err := proto.Unmarshal(value, &sdbProc); err != nil {
@@ -65,6 +69,8 @@ func processSetCensusRoot(value []byte, root []byte) ([]byte, error) {
 	return newValue, nil
 }
 
+// processGetVotesRoot is the GetRootFn function to get the votes root of a
+// process leaf.
 func processGetVotesRoot(value []byte) ([]byte, error) {
 	var sdbProc models.StateDBProcess
 	if err := proto.Unmarshal(value, &sdbProc); err != nil {
@@ -73,6 +79,8 @@ func processGetVotesRoot(value []byte) ([]byte, error) {
 	return sdbProc.VotesRoot, nil
 }
 
+// processSetVotesRoot is the SetRootFn function to set the votes root of a
+// process leaf.
 func processSetVotesRoot(value []byte, root []byte) ([]byte, error) {
 	var sdbProc models.StateDBProcess
 	// fmt.Printf("DBG processSetVotesRoot %x\n", value)
@@ -87,6 +95,7 @@ func processSetVotesRoot(value []byte, root []byte) ([]byte, error) {
 	return newValue, nil
 }
 
+// OraclesCfg is the Oracles subTree configuration.
 var OraclesCfg = statedb.NewTreeSingleConfig(
 	arbo.HashFunctionSha256,
 	"oracs",
@@ -95,6 +104,7 @@ var OraclesCfg = statedb.NewTreeSingleConfig(
 	rootLeafSetRoot,
 )
 
+// ValidatorsCfg is the Validators subTree configuration.
 var ValidatorsCfg = statedb.NewTreeSingleConfig(
 	arbo.HashFunctionSha256,
 	"valids",
@@ -103,6 +113,7 @@ var ValidatorsCfg = statedb.NewTreeSingleConfig(
 	rootLeafSetRoot,
 )
 
+// ProcessesCfg is the Processes subTree configuration.
 var ProcessesCfg = statedb.NewTreeSingleConfig(
 	arbo.HashFunctionSha256,
 	"procs",
@@ -111,6 +122,8 @@ var ProcessesCfg = statedb.NewTreeSingleConfig(
 	rootLeafSetRoot,
 )
 
+// CensusCfg is the Census subTree (found under a Process leaf) configuration
+// for a process that supports non-anonymous voting with rolling census.
 var CensusCfg = statedb.NewTreeNonSingleConfig(
 	arbo.HashFunctionSha256,
 	"cen",
@@ -119,6 +132,9 @@ var CensusCfg = statedb.NewTreeNonSingleConfig(
 	processSetCensusRoot,
 )
 
+// CensusPoseidonCfg is the Census subTree (found under a Process leaf)
+// configuration when the process supports anonymous voting with rolling
+// census.  This Census subTree uses the SNARK friendly hash function Poseidon.
 var CensusPoseidonCfg = statedb.NewTreeNonSingleConfig(
 	arbo.HashFunctionPoseidon,
 	"cenPos",
@@ -127,6 +143,7 @@ var CensusPoseidonCfg = statedb.NewTreeNonSingleConfig(
 	processSetCensusRoot,
 )
 
+// VotesCfg is the Votes subTree (found under a Process leaf) configuration.
 var VotesCfg = statedb.NewTreeNonSingleConfig(
 	arbo.HashFunctionSha256,
 	"votes",
@@ -180,6 +197,10 @@ type State struct {
 	height              uint32
 }
 
+// NOTE(Edu): It is unclear to me why we use locking for write operations here.
+// It is my understanding that all write operations to the State come from
+// processing transaction, which are always processed serially, and thus no
+// thread-safety is required.
 // ImmutableState holds the latest trees version saved on disk
 type ImmutableState struct {
 	// Note that the mutex locks the entirety of the three IAVL trees, both
@@ -276,6 +297,8 @@ func initStateDB(dataDir string) (*statedb.StateDB, error) {
 	return sdb, update.Commit()
 }
 
+// mainTreeView is a thread-safe function to obtain a pointer to the last
+// opened mainTree as a TreeView.
 func (v *State) mainTreeView() *statedb.TreeView {
 	return v.mainTreeViewValue.Load().(*statedb.TreeView)
 }
@@ -286,6 +309,10 @@ func (v *State) setMainTreeView(treeView *statedb.TreeView) {
 	v.mainTreeViewValue.Store(treeView)
 }
 
+// mainTreeViewer returns the mainTree as a treeViewer.  When isQuery is false,
+// the mainTree returned is the not yet commited one from the currently open
+// StateDB transaction.  When isQuery is false, the mainTree returned is the
+// last commited version.
 func (v *State) mainTreeViewer(isQuery bool) statedb.TreeViewer {
 	var mainTree statedb.TreeViewer
 	if isQuery {
@@ -547,6 +574,7 @@ func (v *State) voteID(pid, nullifier []byte) ([]byte, error) {
 // Envelope returns the hash of a stored vote if exists.
 func (v *State) Envelope(processID, nullifier []byte, isQuery bool) (_ []byte, err error) {
 	// TODO(mvdan): remove the recover once
+	// NOTE(Edu): bye bye iavl
 	// https://github.com/tendermint/iavl/issues/212 is fixed
 	// defer func() {
 	// 	if r := recover(); r != nil {
@@ -636,6 +664,7 @@ func (v *State) CountVotes(processID []byte, isQuery bool) uint32 {
 func (v *State) EnvelopeList(processID []byte, from, listSize int,
 	isQuery bool) (nullifiers [][]byte) {
 	// TODO(mvdan): remove the recover once
+	// NOTE(Edu): bye bye iavl
 	// https://github.com/tendermint/iavl/issues/212 is fixed
 	// defer func() {
 	// 	if r := recover(); r != nil {
@@ -672,11 +701,6 @@ func (v *State) Header(isQuery bool) *models.TendermintHeader {
 	}
 	return &header
 }
-
-// AppHash returns last hash of the application
-// func (v *State) AppHash(isQuery bool) []byte {
-// 	return v.Header(isQuery).AppHash
-// }
 
 // Save persistent save of vochain mem trees
 func (v *State) Save() ([]byte, error) {
@@ -733,9 +757,7 @@ func (v *State) Height() uint32 {
 	return atomic.LoadUint32(&v.height)
 }
 
-// TODO: Return error
-// WorkingHash returns the hash of the vochain trees censusRoots
-// hash(appTree+processTree+voteTree)
+// WorkingHash returns the hash of the vochain StateDB (mainTree.Root)
 func (v *State) WorkingHash() []byte {
 	v.RLock()
 	defer v.RUnlock()

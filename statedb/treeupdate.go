@@ -120,11 +120,10 @@ func (u *TreeUpdate) Set(key, value []byte) error {
 	return u.tree.Set(u.tree.tx, key, value)
 }
 
-// subTree is an internal function used to open the subTree (singleton and
-// non-singleton) as a TreeUpdate.  The treeUpdate.tx is created from
-// u.tx appending the prefix `subKeySubTree | cfg.prefix`.  In turn
-// the treeUpdate.tree uses the db.WriteTx from treeUpdate.tx appending the
-// prefix `'/' | subKeyTree`.
+// SubTree is used to open the subTree (singleton and non-singleton) as a
+// TreeUpdate.  The treeUpdate.tx is created from u.tx appending the prefix
+// `subKeySubTree | cfg.prefix`.  In turn the treeUpdate.tree uses the
+// db.WriteTx from treeUpdate.tx appending the prefix `'/' | subKeyTree`.
 func (u *TreeUpdate) SubTree(cfg *TreeConfig) (treeUpdate *TreeUpdate, err error) {
 	if treeUpdate, ok := u.openSubs[string(cfg.prefix)]; ok {
 		return treeUpdate, nil
@@ -154,6 +153,8 @@ func (u *TreeUpdate) SubTree(cfg *TreeConfig) (treeUpdate *TreeUpdate, err error
 	return treeUpdate, nil
 }
 
+// DeepSubTree allows opening a nested subTree by passing the list of tree
+// configurations.
 func (u *TreeUpdate) DeepSubTree(cfgs []*TreeConfig) (treeUpdate *TreeUpdate, err error) {
 	tree := u
 	for _, cfg := range cfgs {
@@ -164,6 +165,8 @@ func (u *TreeUpdate) DeepSubTree(cfgs []*TreeConfig) (treeUpdate *TreeUpdate, er
 	return tree, nil
 }
 
+// DeepGet allows performing a Get on a nested subTree by passing the list
+// of tree configurations and the key to get at the last subTree.
 func (u *TreeUpdate) DeepGet(cfgs []*TreeConfig, key []byte) ([]byte, error) {
 	tree, err := u.DeepSubTree(cfgs)
 	if err != nil {
@@ -172,6 +175,8 @@ func (u *TreeUpdate) DeepGet(cfgs []*TreeConfig, key []byte) ([]byte, error) {
 	return tree.Get(key)
 }
 
+// DeepAdd allows performing an Add on a nested subTree by passing the list
+// of tree configurations and the key, value to add on the last subTree.
 func (u *TreeUpdate) DeepAdd(cfgs []*TreeConfig, key, value []byte) error {
 	tree, err := u.DeepSubTree(cfgs)
 	if err != nil {
@@ -180,6 +185,8 @@ func (u *TreeUpdate) DeepAdd(cfgs []*TreeConfig, key, value []byte) error {
 	return tree.Add(key, value)
 }
 
+// DeepSet allows performing a Set on a nested subTree by passing the list
+// of tree configurations and the key, value to set on the last subTree.
 func (u *TreeUpdate) DeepSet(cfgs []*TreeConfig, key, value []byte) error {
 	tree, err := u.DeepSubTree(cfgs)
 	if err != nil {
@@ -188,25 +195,33 @@ func (u *TreeUpdate) DeepSet(cfgs []*TreeConfig, key, value []byte) error {
 	return tree.Set(key, value)
 }
 
+// AsTreeView returns a read-only view of this subTree that fulfills the
+// TreeViewer interface.
 func (u *TreeUpdate) AsTreeView() TreeViewer {
 	return &treeUpdateView{u}
 }
 
+// treeUpdateView is a wrapper over TreeUpdate that fulfills the TreeViewer
+// interface.
 type treeUpdateView struct {
 	*TreeUpdate
 }
 
+// verify that treeUpdateView fulfills the TreeViewer interface.
 var _ TreeViewer = (*treeUpdateView)(nil)
 
+// NoState implements the TreViewer.NoState method.
 func (v *treeUpdateView) NoState() Viewer {
 	return v.TreeUpdate.NoState()
 }
 
+// SubTree implements the TreViewer.SubTree method.
 func (v *treeUpdateView) SubTree(c *TreeConfig) (TreeViewer, error) {
 	tu, err := v.TreeUpdate.SubTree(c)
 	return &treeUpdateView{tu}, err
 }
 
+// DeepSubTree implements the TreViewer.DeepSubTree method.
 func (v *treeUpdateView) DeepSubTree(cfgs []*TreeConfig) (TreeViewer, error) {
 	tu, err := v.TreeUpdate.DeepSubTree(cfgs)
 	return &treeUpdateView{tu}, err
