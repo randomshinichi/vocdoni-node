@@ -83,7 +83,6 @@ func processGetVotesRoot(value []byte) ([]byte, error) {
 // process leaf.
 func processSetVotesRoot(value []byte, root []byte) ([]byte, error) {
 	var sdbProc models.StateDBProcess
-	// fmt.Printf("DBG processSetVotesRoot %x\n", value)
 	if err := proto.Unmarshal(value, &sdbProc); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal StateDBProcess: %w", err)
 	}
@@ -541,7 +540,6 @@ func (v *State) AddVote(vote *models.Vote) error {
 	if err != nil {
 		return fmt.Errorf("cannot marshal sdbVote: %w", err)
 	}
-	// fmt.Printf("DBG AddVote pid = %x, vid = %x\n", vote.ProcessId, vid)
 	v.Lock()
 	err = v.Tx.DeepAdd([]*statedb.TreeConfig{ProcessesCfg, VotesCfg.WithKey(vote.ProcessId)},
 		vid, sdbVoteBytes)
@@ -653,7 +651,6 @@ func (v *State) CountVotes(processID []byte, isQuery bool) uint32 {
 	var count uint32
 	// TODO: Once statedb.TreeView.Size() works, replace this by that.
 	v.iterateVotes(processID, func(vid []byte, sdbVote *models.StateDBVote) bool {
-		// fmt.Printf("DBG CountVotes key = %x, value = %x\n", key, value)
 		count++
 		return false
 	}, isQuery)
