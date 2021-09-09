@@ -71,8 +71,10 @@ func (v *State) Process(pid []byte, isQuery bool) (*models.Process, error) {
 	processBytes, err = v.mainTreeViewer(isQuery).
 		DeepGet([]*statedb.TreeConfig{ProcessesCfg}, pid)
 	v.RUnlock()
-	if processBytes == nil {
+	if tree.IsNotFound(err) {
 		return nil, ErrProcessNotFound
+	} else if err != nil {
+		return nil, err
 	}
 	var process models.StateDBProcess
 	err = proto.Unmarshal(processBytes, &process)

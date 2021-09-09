@@ -115,7 +115,7 @@ func testEthSendVotes(t *testing.T, s testStorageProof,
 		t.Fatal(err)
 	}
 	cktxresp = app.CheckTx(cktx)
-	fmt.Printf("DBG cktxresp %#v\n", cktxresp)
+	// fmt.Printf("DBG cktxresp %#v\n", cktxresp)
 	if cktxresp.Code != 0 {
 		if expectedResult {
 			t.Fatalf(fmt.Sprintf("checkTx failed: %s", cktxresp.Data))

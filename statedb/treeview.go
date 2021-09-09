@@ -75,14 +75,19 @@ func (v *TreeView) Get(key []byte) ([]byte, error) {
 
 // IterateNodes iterates over all nodes of this tree.  The key and value are
 // the Arbo database representation of a node, and don't match the key value
-// used in Get, Add and Set.
+// used in Get, Add and Set.  When callback returns true, the iteration is
+// stopped and this function returns.
 func (v *TreeView) IterateNodes(callback func(key, value []byte) bool) error {
 	return v.tree.Iterate(nil, callback)
 }
 
-// Iterate iterates over all leafs of this tree.
+// Iterate iterates over all leafs of this tree.  When callback returns true,
+// the iteration is stopped and this function returns.
 func (v *TreeView) Iterate(callback func(key, value []byte) bool) error {
 	return v.tree.Iterate(nil, func(key, value []byte) bool {
+		if value[0] != arbo.PrefixValueLeaf {
+			return false
+		}
 		leafK, leafV := arbo.ReadLeafValue(value)
 		return callback(leafK, leafV)
 	})

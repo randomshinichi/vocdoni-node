@@ -139,6 +139,8 @@ func (t *Tree) AddBatch(wTx db.WriteTx, keys, values [][]byte) ([]int, error) {
 	return i, nil
 }
 
+// Iterate over all the database-encoded nodes of the tree.  When callback
+// returns true, the iteration is stopped and this function returns.
 func (t *Tree) Iterate(rTx db.ReadTx, callback func(key, value []byte) bool) error {
 	if rTx == nil {
 		rTx = t.DB().ReadTx()

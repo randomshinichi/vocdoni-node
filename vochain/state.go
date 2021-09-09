@@ -2,6 +2,7 @@ package vochain
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"sync"
@@ -44,20 +45,20 @@ func rootLeafSetRoot(value []byte, root []byte) ([]byte, error) {
 }
 
 func processGetCensusRoot(value []byte) ([]byte, error) {
-	var proc models.StateDBProcess
-	if err := proto.Unmarshal(value, &proc); err != nil {
+	var sdbProc models.StateDBProcess
+	if err := proto.Unmarshal(value, &sdbProc); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal StateDBProcess: %w", err)
 	}
-	return proc.Process.CensusRoot, nil
+	return sdbProc.Process.CensusRoot, nil
 }
 
 func processSetCensusRoot(value []byte, root []byte) ([]byte, error) {
-	var proc models.StateDBProcess
-	if err := proto.Unmarshal(value, &proc); err != nil {
+	var sdbProc models.StateDBProcess
+	if err := proto.Unmarshal(value, &sdbProc); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal StateDBProcess: %w", err)
 	}
-	proc.Process.CensusRoot = root
-	newValue, err := proto.Marshal(&proc)
+	sdbProc.Process.CensusRoot = root
+	newValue, err := proto.Marshal(&sdbProc)
 	if err != nil {
 		return nil, fmt.Errorf("cannot marshal StateDBProcess: %w", err)
 	}
@@ -65,21 +66,21 @@ func processSetCensusRoot(value []byte, root []byte) ([]byte, error) {
 }
 
 func processGetVotesRoot(value []byte) ([]byte, error) {
-	var proc models.StateDBProcess
-	if err := proto.Unmarshal(value, &proc); err != nil {
+	var sdbProc models.StateDBProcess
+	if err := proto.Unmarshal(value, &sdbProc); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal StateDBProcess: %w", err)
 	}
-	return proc.VotesRoot, nil
+	return sdbProc.VotesRoot, nil
 }
 
 func processSetVotesRoot(value []byte, root []byte) ([]byte, error) {
-	var proc models.StateDBProcess
-	fmt.Printf("DBG processSetVotesRoot %x\n", value)
-	if err := proto.Unmarshal(value, &proc); err != nil {
+	var sdbProc models.StateDBProcess
+	// fmt.Printf("DBG processSetVotesRoot %x\n", value)
+	if err := proto.Unmarshal(value, &sdbProc); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal StateDBProcess: %w", err)
 	}
-	proc.VotesRoot = root
-	newValue, err := proto.Marshal(&proc)
+	sdbProc.VotesRoot = root
+	newValue, err := proto.Marshal(&sdbProc)
 	if err != nil {
 		return nil, fmt.Errorf("cannot marshal StateDBProcess: %w", err)
 	}
@@ -239,7 +240,7 @@ func initStateDB(dataDir string) (*statedb.StateDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	if bytes.Compare(root, make([]byte, len(root))) != 0 {
+	if !bytes.Equal(root, make([]byte, len(root))) {
 		// StateDB already initialized if StateDB.Root != emptyHash
 		return sdb, nil
 	}
@@ -318,7 +319,7 @@ func (v *State) RemoveOracle(address common.Address) error {
 		return err
 	}
 	if _, err := oracles.Get(address.Bytes()); tree.IsNotFound(err) {
-		return fmt.Errorf("oracle not found")
+		return fmt.Errorf("oracle not found: %w", err)
 	} else if err != nil {
 		return err
 	}
@@ -383,7 +384,7 @@ func (v *State) RemoveValidator(address []byte) error {
 		return err
 	}
 	if _, err := validators.Get(address); tree.IsNotFound(err) {
-		return fmt.Errorf("validator not found")
+		return fmt.Errorf("validator not found: %w", err)
 	} else if err != nil {
 		return err
 	}
@@ -500,13 +501,23 @@ func (v *State) AddVote(vote *models.Vote) error {
 	}
 	// save block number
 	vote.Height = v.Height()
-	newVoteBytes, err := proto.Marshal(vote)
+	voteBytes, err := proto.Marshal(vote)
 	if err != nil {
-		return fmt.Errorf("cannot marshal vote")
+		return fmt.Errorf("cannot marshal vote: %w", err)
 	}
+	sdbVote := models.StateDBVote{
+		VoteHash:  ethereum.HashRaw(voteBytes),
+		ProcessId: vote.ProcessId,
+		Nullifier: vote.Nullifier,
+	}
+	sdbVoteBytes, err := proto.Marshal(&sdbVote)
+	if err != nil {
+		return fmt.Errorf("cannot marshal sdbVote: %w", err)
+	}
+	// fmt.Printf("DBG AddVote pid = %x, vid = %x\n", vote.ProcessId, vid)
 	v.Lock()
 	err = v.Tx.DeepAdd([]*statedb.TreeConfig{ProcessesCfg, VotesCfg.WithKey(vote.ProcessId)},
-		vid, ethereum.HashRaw(newVoteBytes))
+		vid, sdbVoteBytes)
 	v.Unlock()
 	if err != nil {
 		return err
@@ -517,7 +528,9 @@ func (v *State) AddVote(vote *models.Vote) error {
 	return nil
 }
 
-// voteID = byte( processID+nullifier )
+// NOTE(Edu): Changed this from byte(processID+nullifier) to
+// hash(processID+nullifier) to allow using it as a key in Arbo tree.
+// voteID = hash(processID+nullifier)
 func (v *State) voteID(pid, nullifier []byte) ([]byte, error) {
 	if len(pid) != types.ProcessIDsize {
 		return nil, fmt.Errorf("wrong processID size %d", len(pid))
@@ -525,21 +538,21 @@ func (v *State) voteID(pid, nullifier []byte) ([]byte, error) {
 	if len(nullifier) != types.VoteNullifierSize {
 		return nil, fmt.Errorf("wrong nullifier size %d", len(nullifier))
 	}
-	vid := bytes.Buffer{}
+	vid := sha256.New()
 	vid.Write(pid)
 	vid.Write(nullifier)
-	return vid.Bytes(), nil
+	return vid.Sum(nil), nil
 }
 
 // Envelope returns the hash of a stored vote if exists.
 func (v *State) Envelope(processID, nullifier []byte, isQuery bool) (_ []byte, err error) {
 	// TODO(mvdan): remove the recover once
 	// https://github.com/tendermint/iavl/issues/212 is fixed
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("recovered panic: %v", r)
-		}
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		err = fmt.Errorf("recovered panic: %v", r)
+	// 	}
+	// }()
 
 	vid, err := v.voteID(processID, nullifier)
 	if err != nil {
@@ -554,13 +567,17 @@ func (v *State) Envelope(processID, nullifier []byte, isQuery bool) (_ []byte, e
 	} else if err != nil {
 		return nil, err
 	}
-	voteHash, err := votesTree.Get(vid)
+	sdbVoteBytes, err := votesTree.Get(vid)
 	if tree.IsNotFound(err) {
 		return nil, ErrVoteDoesNotExist
 	} else if err != nil {
 		return nil, err
 	}
-	return voteHash, nil
+	var sdbVote models.StateDBVote
+	if err := proto.Unmarshal(sdbVoteBytes, &sdbVote); err != nil {
+		return nil, fmt.Errorf("cannot unmarshal sdbVote: %w", err)
+	}
+	return sdbVote.VoteHash, nil
 }
 
 // EnvelopeExists returns true if the envelope identified with voteID exists
@@ -578,7 +595,7 @@ func (v *State) EnvelopeExists(processID, nullifier []byte, isQuery bool) (bool,
 // iterateVotes iterates fn over state tree entries with the processID prefix.
 // if isQuery, the IAVL tree is used, otherwise the AVL tree is used.
 func (v *State) iterateVotes(processID []byte,
-	fn func(key []byte, value []byte) bool, isQuery bool) error {
+	fn func(vid []byte, sdbVote *models.StateDBVote) bool, isQuery bool) error {
 	v.RLock()
 	defer v.RUnlock()
 	votesTree, err := v.mainTreeViewer(isQuery).DeepSubTree(
@@ -586,14 +603,29 @@ func (v *State) iterateVotes(processID []byte,
 	if err != nil {
 		return err
 	}
-	return votesTree.Iterate(fn)
+	var callbackErr error
+	if err := votesTree.Iterate(func(key, value []byte) bool {
+		var sdbVote models.StateDBVote
+		if err := proto.Unmarshal(value, &sdbVote); err != nil {
+			callbackErr = err
+			return true
+		}
+		return fn(key, &sdbVote)
+	}); err != nil {
+		return err
+	}
+	if callbackErr != nil {
+		return callbackErr
+	}
+	return nil
 }
 
 // CountVotes returns the number of votes registered for a given process id
 func (v *State) CountVotes(processID []byte, isQuery bool) uint32 {
 	var count uint32
 	// TODO: Once statedb.TreeView.Size() works, replace this by that.
-	v.iterateVotes(processID, func(key []byte, value []byte) bool {
+	v.iterateVotes(processID, func(vid []byte, sdbVote *models.StateDBVote) bool {
+		// fmt.Printf("DBG CountVotes key = %x, value = %x\n", key, value)
 		count++
 		return false
 	}, isQuery)
@@ -605,20 +637,20 @@ func (v *State) EnvelopeList(processID []byte, from, listSize int,
 	isQuery bool) (nullifiers [][]byte) {
 	// TODO(mvdan): remove the recover once
 	// https://github.com/tendermint/iavl/issues/212 is fixed
-	defer func() {
-		if r := recover(); r != nil {
-			log.Errorf("recovered panic: %v", r)
-			// TODO(mvdan): this func should return an error instead
-			// err = fmt.Errorf("recovered panic: %v", r)
-		}
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		log.Errorf("recovered panic: %v", r)
+	// 		// TODO(mvdan): this func should return an error instead
+	// 		// err = fmt.Errorf("recovered panic: %v", r)
+	// 	}
+	// }()
 	idx := 0
-	v.iterateVotes(processID, func(key []byte, value []byte) bool {
+	v.iterateVotes(processID, func(vid []byte, sdbVote *models.StateDBVote) bool {
 		if idx >= from+listSize {
 			return true
 		}
 		if idx >= from {
-			nullifiers = append(nullifiers, key[32:])
+			nullifiers = append(nullifiers, sdbVote.Nullifier)
 		}
 		idx++
 		return false

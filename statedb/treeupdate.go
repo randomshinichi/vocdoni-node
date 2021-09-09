@@ -68,6 +68,9 @@ func (u *TreeUpdate) IterateNodes(callback func(key, value []byte) bool) error {
 // Iterate iterates over all leafs of this tree.
 func (u *TreeUpdate) Iterate(callback func(key, value []byte) bool) error {
 	return u.tree.Iterate(u.tree.tx, func(key, value []byte) bool {
+		if value[0] != arbo.PrefixValueLeaf {
+			return false
+		}
 		leafK, leafV := arbo.ReadLeafValue(value)
 		return callback(leafK, leafV)
 	})

@@ -14,6 +14,7 @@ import (
 
 	"go.vocdoni.io/dvote/config"
 	"go.vocdoni.io/dvote/crypto/ethereum"
+	"go.vocdoni.io/dvote/statedb"
 	"go.vocdoni.io/dvote/test/testcommon/testutil"
 	"go.vocdoni.io/dvote/util"
 	"go.vocdoni.io/dvote/vochain"
@@ -41,7 +42,7 @@ var (
 			Nullifier:   testutil.Hex2byte(nil, "5592f1c18e2a15953f355c34b247d751da307338c994000b9a65db1dc14cc6c0"), // nullifier and nonce are the same here
 			VotePackage: vp,
 		}
-	}
+	}()
 
 	ProcessHardcoded = &models.Process{
 		ProcessId:    testutil.Hex2byte(nil, "e9d5e8d791f51179e218c606f83f5967ab272292a6dbda887853d81f7a1d5105"),
@@ -53,6 +54,11 @@ var (
 		Mode:         &models.ProcessMode{},
 		Status:       models.ProcessStatus_READY,
 		VoteOptions:  &models.ProcessVoteOptions{MaxCount: 16, MaxValue: 16},
+	}
+
+	StateDBProcessHardcoded = &models.StateDBProcess{
+		Process:   ProcessHardcoded,
+		VotesRoot: make([]byte, 32),
 	}
 
 	// privKey e0aa6db5a833531da4d259fb5df210bae481b276dc4c2ab6ab9771569375aed5 for address 06d0d2c41f4560f8ffea1285f44ce0ffa2e19ef0
@@ -151,11 +157,13 @@ func NewVochainStateWithProcess(tb testing.TB) *vochain.State {
 		tb.Fatal(err)
 	}
 	// add process
-	processBytes, err := proto.Marshal(ProcessHardcoded)
+	processBytes, err := proto.Marshal(StateDBProcessHardcoded)
 	if err != nil {
 		tb.Fatal(err)
 	}
-	if err = s.Store.Tree(vochain.ProcessTree).Add(testutil.Hex2byte(nil, "e9d5e8d791f51179e218c606f83f5967ab272292a6dbda887853d81f7a1d5105"), processBytes); err != nil {
+	if err = s.Tx.DeepSet([]*statedb.TreeConfig{vochain.ProcessesCfg},
+		testutil.Hex2byte(nil, "e9d5e8d791f51179e218c606f83f5967ab272292a6dbda887853d81f7a1d5105"),
+		processBytes); err != nil {
 		tb.Fatal(err)
 	}
 	return s

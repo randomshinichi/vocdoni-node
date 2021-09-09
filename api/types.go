@@ -227,7 +227,7 @@ type MetaResponse struct {
 	Tx                   *indexertypes.TxPackage          `json:"tx,omitempty"`
 	TxList               []*indexertypes.TxMetadata       `json:"txList,omitempty"`
 	URI                  string                           `json:"uri,omitempty"`
-	ValidatorList        []*models.Validator              `json:"validatorlist,omitempty"`
+	ValidatorList        []models.Validator               `json:"validatorlist,omitempty"`
 	ValidProof           *bool                            `json:"validProof,omitempty"`
 	Weight               string                           `json:"weight,omitempty"`
 }
