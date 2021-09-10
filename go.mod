@@ -3,7 +3,7 @@ module go.vocdoni.io/dvote
 go 1.16
 
 // For testing purposes while dvote-protobuf becomes stable
-replace go.vocdoni.io/proto => ../dvote-protobuf
+// replace go.vocdoni.io/proto => ../dvote-protobuf
 
 replace github.com/timshannon/badgerhold/v3 => github.com/vocdoni/badgerhold/v3 v3.0.0-20210514115050-2d704df3456f
 
@@ -52,7 +52,7 @@ require (
 	github.com/vocdoni/go-external-ip v0.0.0-20210705122950-fae6195a1d44
 	github.com/vocdoni/storage-proofs-eth-go v0.1.6
 	go.uber.org/zap v1.18.1
-	go.vocdoni.io/proto v1.0.4-0.20210726091234-bceaf416353b
+	go.vocdoni.io/proto v1.0.4-0.20210910085433-e7c056b7c23a
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
 	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d
 	google.golang.org/protobuf v1.27.1
@@ -64,5 +64,3 @@ require (
 // https://github.com/ethereum/go-ethereum/issues/20590 is fixed, stub it out
 // with a replace directive. The stub was hacked together with vim.
 replace gopkg.in/olebedev/go-duktape.v3 => ./duktape-stub
-
-replace github.com/vocdoni/arbo => ../tmp/arbo
