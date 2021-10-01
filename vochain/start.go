@@ -13,7 +13,6 @@ import (
 	crypto25519 "github.com/tendermint/tendermint/crypto/ed25519"
 	mempl "github.com/tendermint/tendermint/mempool"
 
-	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -67,7 +66,7 @@ func NewVochain(vochaincfg *config.VochainCfg, genesis []byte) *BaseApplication 
 		logDisable = true
 		vochaincfg.LogLevelMemPool = "error"
 	}
-	logger, err := tmflags.ParseLogLevel(
+	logger, err := tmlog.NewDefaultLogger(
 		vochaincfg.LogLevelMemPool,
 		NewTenderLogger("mempool", logDisable),
 		tmcfg.DefaultLogLevel)
@@ -244,7 +243,7 @@ func newTendermint(app *BaseApplication,
 		logDisable = true
 		tconfig.LogLevel = "error"
 	}
-	logger, err := tmflags.ParseLogLevel(tconfig.LogLevel,
+	logger, err := tmlog.NewDefaultLogger(tconfig.LogLevel,
 		NewTenderLogger("tendermint", logDisable), tmcfg.DefaultLogLevel)
 	if err != nil {
 		log.Errorf("failed to parse log level: %v", err)
