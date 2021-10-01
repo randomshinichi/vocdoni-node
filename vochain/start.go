@@ -16,8 +16,7 @@ import (
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
-	nm "github.com/tendermint/tendermint/node"
-	"github.com/tendermint/tendermint/proxy"
+	tmnode "github.com/tendermint/tendermint/node"
 	tmtypes "github.com/tendermint/tendermint/types"
 	"go.vocdoni.io/dvote/log"
 )
@@ -137,7 +136,7 @@ func NewTenderLogger(artifact string, disabled bool) *TenderLogger {
 
 // we need to set init (first time validators and oracles)
 func newTendermint(app *BaseApplication,
-	localConfig *config.VochainCfg, genesis []byte) (*nm.Node, error) {
+	localConfig *config.VochainCfg, genesis []byte) (*tmnode.Node, error) {
 	// create node config
 	var err error
 
@@ -301,17 +300,18 @@ func newTendermint(app *BaseApplication,
 	}
 
 	// create node
-	node, err := nm.NewNode(
+	node, err := tmnode.NewDefault(
 		tconfig,
-		pv,      // the node val
-		nodeKey, // node key
-		proxy.NewLocalClientCreator(app),
-		// Note we use proxy.NewLocalClientCreator here to create a local client
-		// instead of one communicating through a socket or gRPC.
-		nm.DefaultGenesisDocProviderFunc(tconfig),
-		nm.DefaultDBProvider,
-		nm.DefaultMetricsProvider(tconfig.Instrumentation),
-		logger)
+		logger,
+
+		// now unused with tendermint v0.35?
+		//pv,      // the node val
+		//nodeKey, // node key
+
+		// presumably now done by default? proxy is now internal
+		// proxy.NewLocalClientCreator(app),
+	)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new Tendermint node: %w", err)
 	}
