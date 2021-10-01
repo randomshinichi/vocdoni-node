@@ -18,8 +18,8 @@ import (
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	nm "github.com/tendermint/tendermint/node"
-	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
+	tmtypes "github.com/tendermint/tendermint/types"
 	"go.vocdoni.io/dvote/log"
 )
 
@@ -268,14 +268,14 @@ func newTendermint(app *BaseApplication,
 	log.Infof("using keyfile %s", tconfig.PrivValidatorKeyFile())
 
 	// nodekey is used for the p2p transport layer
-	var nodeKey *p2p.NodeKey
+	var nodeKey *tmtypes.NodeKey
 	if len(localConfig.NodeKey) > 0 {
 		nodeKey, err = NewNodeKey(localConfig.NodeKey, tconfig)
 		if err != nil {
 			return nil, fmt.Errorf("cannot create node key: %w", err)
 		}
 	} else {
-		if nodeKey, err = p2p.LoadOrGenNodeKey(tconfig.NodeKeyFile()); err != nil {
+		if nodeKey, err = tmtypes.LoadOrGenNodeKey(tconfig.NodeKeyFile()); err != nil {
 			return nil, fmt.Errorf("cannot create or load node key: %w", err)
 		}
 	}

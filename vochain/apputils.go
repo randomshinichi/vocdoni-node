@@ -21,8 +21,8 @@ import (
 	crypto25519 "github.com/tendermint/tendermint/crypto/ed25519"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/tempfile"
-	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
+	tmtypes "github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"go.vocdoni.io/proto/build/go/models"
 )
@@ -99,12 +99,12 @@ func NewPrivateValidator(tmPrivKey string, tconfig *cfg.Config) (*privval.FilePV
 }
 
 // NewNodeKey returns and saves to the disk storage a tendermint node key
-func NewNodeKey(tmPrivKey string, tconfig *cfg.Config) (*p2p.NodeKey, error) {
+func NewNodeKey(tmPrivKey string, tconfig *cfg.Config) (*tmtypes.NodeKey, error) {
 	keyBytes, err := hex.DecodeString(util.TrimHex(tmPrivKey))
 	if err != nil {
 		return nil, fmt.Errorf("cannot decode private key: (%s)", err)
 	}
-	nodeKey := &p2p.NodeKey{
+	nodeKey := &tmtypes.NodeKey{
 		PrivKey: crypto25519.PrivKey(keyBytes),
 	}
 	// Write nodeKey to disk
