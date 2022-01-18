@@ -110,22 +110,30 @@ var keysChangePasswordCmd = &cobra.Command{
 	Short: "Changes the password of a keyfile.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		keyJSON, err := os.ReadFile(args[0])
+		k, err := openKeyfile(args[0], "Enter old password:")
 		if err != nil {
 			return err
-		}
-		password := utils.GetPassPhraseWithList("Enter old password:", false, 0, nil)
-		k, err := ethkeystore.DecryptKey(keyJSON, password)
-		if err != nil {
-			return fmt.Errorf("couldn't decrypt the key with given password", err)
 		}
 
 		passwordNew := utils.GetPassPhraseWithList("Enter new password:", false, 0, nil)
 		keyJSONNew, err := ethkeystore.EncryptKey(k, passwordNew, scryptN, scryptP)
 		if err != nil {
-			return fmt.Errorf("couldn't encrypt the key with new password", err)
+			return fmt.Errorf("couldn't encrypt the key with new password: %s", err)
 		}
 
 		return writeKeyFile(args[0], keyJSONNew)
 	},
+}
+
+func openKeyfile(path, prompt string) (*ethkeystore.Key, error) {
+	keyJSON, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	password := utils.GetPassPhraseWithList(prompt, false, 0, nil)
+	k, err := ethkeystore.DecryptKey(keyJSON, password)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't decrypt the key with given password: %s", err)
+	}
+	return k, nil
 }

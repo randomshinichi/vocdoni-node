@@ -9,6 +9,9 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"go.vocdoni.io/dvote/crypto/ethereum"
+	"go.vocdoni.io/proto/build/go/models"
+	"google.golang.org/protobuf/proto"
 )
 
 func writeKeyFile(filename string, k []byte) error {
@@ -53,4 +56,19 @@ func generateKeyFilename(address common.Address) (string, error) {
 	t := time.Now()
 	keyFilename := fmt.Sprintf("%s-%d-%d-%d.%s", address.Hex(), t.Year(), t.Month(), t.Day(), keyExt) // 0xDad23752bB8F80Bb82E6A2422A762fdeAf8dAb74-2022-1-13.vokey
 	return path.Join(keysDir, keyFilename), nil
+}
+
+func signTx(tx *models.Tx, signer *ethereum.SignKeys) (*models.SignedTx, error) {
+	var err error
+	stx := &models.SignedTx{}
+	stx.Tx, err = proto.Marshal(tx)
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal transaction: %s", err)
+	}
+
+	stx.Signature, err = signer.Sign(stx.Tx)
+	if err != nil {
+		return nil, fmt.Errorf("could not sign transaction: %s", err)
+	}
+	return stx, nil
 }
