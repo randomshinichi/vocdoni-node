@@ -11,6 +11,9 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
+	"go.vocdoni.io/dvote/client"
+	"go.vocdoni.io/dvote/crypto/ethereum"
+	"go.vocdoni.io/proto/build/go/models"
 )
 
 const (
@@ -27,22 +30,49 @@ var keysCmd = &cobra.Command{
 
 var keysNewCmd = &cobra.Command{
 	Use:   "new",
-	Short: "Generate a new key that lets you sign transactions to control an Account",
+	Short: "Generate a new key and create its corresponding Account on the chain.",
 	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		password := utils.GetPassPhraseWithList("Your new account is locked with a password. Please give a password. Do not forget this password.", true, 0, nil)
+		fmt.Printf("Step 1/2: First we will generate the key and save it on your disk, encrypted.\nUnlike other blockchains, an Account for this key must first be created on the blockchain for others to send you funds (or any other operations).\nOnce the key is generated and saved, we will send a SetAccountInfo transaction to the blockchain in order to create an Account for this key. \nFear not, if you have only generated a key, you may skip the key generation process and directly send the SetAccountInfo transaction by re-running 'keys new <full path to keyfile>'\n\n")
+
+		password := utils.GetPassPhraseWithList("Your new key file will be locked with a password. Please give a password.", true, 0, nil)
 
 		key, keyPath, err := storeNewKey(rand.Reader, password)
 		if err != nil {
 			return fmt.Errorf("couldn't generate a new key", err)
 		}
-		fmt.Printf("\nYour new key was generated\n\n")
+		fmt.Printf("\nYour new key was generated\n")
 		fmt.Printf("Public address of the key:   %s\n", key.Address.Hex())
-		fmt.Printf("Path of the secret key file: %s\n\n", keyPath)
-		fmt.Printf("- You can share your public address with anyone. Others need it to interact with you.\n")
-		fmt.Printf("- You must NEVER share the secret key with anyone! The key controls access to your funds!\n")
-		fmt.Printf("- You must BACKUP your key file! Without the key, it's impossible to access account funds!\n")
-		fmt.Printf("- You must REMEMBER your password! Without the password, it's impossible to decrypt the key!\n\n")
+		fmt.Printf("Path of the secret key file: %s\n", keyPath)
+		fmt.Printf("- As usual, please BACKUP your key file and REMEMBER your password!\n")
+
+		fmt.Printf("\nStep 2/2: Sending SetAccountInfo to create an Account for key %s on %s\n", key.Address.String(), gatewayRpc)
+		tx := &models.Tx{
+			Payload: &models.Tx_SetAccountInfo{
+				SetAccountInfo: &models.SetAccountInfoTx{
+					Txtype:  models.TxType_SET_ACCOUNT_INFO,
+					Nonce:   0,
+					InfoURI: "ipfs://",
+					Account: key.Address.Bytes(),
+				},
+			}}
+
+		signer := ethereum.NewSignKeys()
+		signer.Private = *key.PrivateKey
+		stx, err := signTx(tx, signer)
+		if err != nil {
+			return err
+		}
+
+		c, err := client.New(gatewayRpc)
+		if err != nil {
+			return err
+		}
+		resp, err := submitRawTx(stx, c)
+		if err != nil {
+			return err
+		}
+		fmt.Println("resp", resp)
 		return nil
 	},
 }

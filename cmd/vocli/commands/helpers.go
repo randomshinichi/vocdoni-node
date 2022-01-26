@@ -12,6 +12,7 @@ import (
 	"go.vocdoni.io/dvote/api"
 	"go.vocdoni.io/dvote/client"
 	"go.vocdoni.io/dvote/crypto/ethereum"
+	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/proto/build/go/models"
 	"google.golang.org/protobuf/proto"
 )
@@ -77,7 +78,7 @@ func signTx(tx *models.Tx, signer *ethereum.SignKeys) (*models.SignedTx, error) 
 
 func submitRawTx(stx *models.SignedTx, c *client.Client) (*api.APIresponse, error) {
 	var err error
-	fmt.Println("Sending Transaction")
+	log.Debug(stx)
 	req := &api.APIrequest{}
 	req.Method = "submitRawTx"
 	req.Payload, err = proto.Marshal(stx)
