@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
 	qt "github.com/frankban/quicktest"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	"go.vocdoni.io/dvote/crypto/ethereum"
@@ -22,9 +21,10 @@ func TestProcessSetStatusTransition(t *testing.T) {
 	if err := oracle.Generate(); err != nil {
 		t.Fatal(err)
 	}
-	if err := app.State.AddOracle(common.HexToAddress(oracle.AddressString())); err != nil {
+	if err := app.State.AddOracle(oracle.Address()); err != nil {
 		t.Fatal(err)
 	}
+
 	// set tx cost for Tx: NewProcess
 	if err := app.State.SetTxCost(models.TxType_NEW_PROCESS, 10); err != nil {
 		t.Fatal(err)
@@ -70,31 +70,31 @@ func TestProcessSetStatusTransition(t *testing.T) {
 
 	// Set it to PAUSE (should work)
 	status := models.ProcessStatus_PAUSED
-	if err := testSetProcessStatus(t, pid, &oracle, app, &status); err != nil {
+	if err := testSetProcessStatus(t, pid, &signer, app, &status); err != nil {
 		t.Fatal(err)
 	}
 
 	// Set it to READY (should work)
 	status = models.ProcessStatus_READY
-	if err := testSetProcessStatus(t, pid, &oracle, app, &status); err != nil {
+	if err := testSetProcessStatus(t, pid, &signer, app, &status); err != nil {
 		t.Fatal(err)
 	}
 
 	// Set it to ENDED (should work)
 	status = models.ProcessStatus_ENDED
-	if err := testSetProcessStatus(t, pid, &oracle, app, &status); err != nil {
+	if err := testSetProcessStatus(t, pid, &signer, app, &status); err != nil {
 		t.Fatal(err)
 	}
 
 	// Set it to RESULTS (should work)
 	status = models.ProcessStatus_RESULTS
-	if err := testSetProcessStatus(t, pid, &oracle, app, &status); err != nil {
+	if err := testSetProcessStatus(t, pid, &signer, app, &status); err != nil {
 		t.Fatal(err)
 	}
 
 	// Set it to READY (should fail)
 	status = models.ProcessStatus_READY
-	if err := testSetProcessStatus(t, pid, &oracle, app, &status); err == nil {
+	if err := testSetProcessStatus(t, pid, &signer, app, &status); err == nil {
 		t.Fatal("results to ready should not be valid")
 	}
 
@@ -120,31 +120,31 @@ func TestProcessSetStatusTransition(t *testing.T) {
 
 	// Set it to READY (should work)
 	status = models.ProcessStatus_READY
-	if err := testSetProcessStatus(t, pid, &oracle, app, &status); err != nil {
+	if err := testSetProcessStatus(t, pid, &signer, app, &status); err != nil {
 		t.Fatal(err)
 	}
 
 	// Set it to PAUSED (should work)
 	status = models.ProcessStatus_PAUSED
-	if err := testSetProcessStatus(t, pid, &oracle, app, &status); err != nil {
+	if err := testSetProcessStatus(t, pid, &signer, app, &status); err != nil {
 		t.Fatal(err)
 	}
 
 	// Set it to ENDED (should fail)
 	status = models.ProcessStatus_ENDED
-	if err := testSetProcessStatus(t, pid, &oracle, app, &status); err == nil {
+	if err := testSetProcessStatus(t, pid, &signer, app, &status); err == nil {
 		t.Fatal("paused to ended should not be valid")
 	}
 
 	// Set it to CANCELED (should work)
 	status = models.ProcessStatus_CANCELED
-	if err := testSetProcessStatus(t, pid, &oracle, app, &status); err != nil {
+	if err := testSetProcessStatus(t, pid, &signer, app, &status); err != nil {
 		t.Fatal(err)
 	}
 
 	// Set it to READY (should fail)
 	status = models.ProcessStatus_READY
-	if err := testSetProcessStatus(t, pid, &oracle, app, &status); err == nil {
+	if err := testSetProcessStatus(t, pid, &signer, app, &status); err == nil {
 		t.Fatal("cancel to ready should not be valid")
 	}
 
@@ -170,20 +170,20 @@ func TestProcessSetStatusTransition(t *testing.T) {
 
 	// Set it to READY (should work)
 	status = models.ProcessStatus_READY
-	if err := testSetProcessStatus(t, pid, &oracle, app, &status); err != nil {
+	if err := testSetProcessStatus(t, pid, &signer, app, &status); err != nil {
 		t.Fatal(err)
 	}
 
 	// Set it to PAUSE (should fail)
 	status = models.ProcessStatus_PAUSED
-	if err := testSetProcessStatus(t, pid, &oracle, app, &status); err == nil {
+	if err := testSetProcessStatus(t, pid, &signer, app, &status); err == nil {
 		t.Fatal("ready to paused should not be possible if interruptible=false")
 	}
 
 	// Set it to ENDED (should fail)
 	status = models.ProcessStatus_ENDED
 	t.Logf("height: %d", app.State.CurrentHeight())
-	if err := testSetProcessStatus(t, pid, &oracle, app, &status); err == nil {
+	if err := testSetProcessStatus(t, pid, &signer, app, &status); err == nil {
 		t.Fatal("ready to ended should not be valid if interruptible=false")
 	}
 
@@ -246,7 +246,7 @@ func TestProcessSetResultsTransition(t *testing.T) {
 	if err := oracle.Generate(); err != nil {
 		t.Fatal(err)
 	}
-	if err := app.State.AddOracle(common.HexToAddress(oracle.AddressString())); err != nil {
+	if err := app.State.AddOracle(oracle.Address()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -266,10 +266,17 @@ func TestProcessSetResultsTransition(t *testing.T) {
 		t.Fatal(err)
 	}
 	acc := &Account{}
-	acc.Balance = 1000
+	acc.Balance = 10000
+	acc.DelegateAddrs = append(acc.DelegateAddrs, oracle.Address().Bytes())
 	acc.InfoURI = "ipfs://"
 	if err := app.State.SetAccount(
 		signer.Address(),
+		acc,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.State.SetAccount(
+		oracle.Address(),
 		acc,
 	); err != nil {
 		t.Fatal(err)
@@ -295,7 +302,6 @@ func TestProcessSetResultsTransition(t *testing.T) {
 	}
 
 	t.Log(app.State.Process(process.ProcessId, false))
-
 	// Set results  (should not work)
 	votes := make([]*models.QuestionResult, 1)
 	votes[0] = &models.QuestionResult{
@@ -395,7 +401,7 @@ func TestProcessSetCensusTransition(t *testing.T) {
 	if err := oracle.Generate(); err != nil {
 		t.Fatal(err)
 	}
-	if err := app.State.AddOracle(common.HexToAddress(oracle.AddressString())); err != nil {
+	if err := app.State.AddOracle(oracle.Address()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -416,6 +422,12 @@ func TestProcessSetCensusTransition(t *testing.T) {
 	acc.InfoURI = "ipfs://"
 	if err := app.State.SetAccount(
 		signer.Address(),
+		acc,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.State.SetAccount(
+		oracle.Address(),
 		acc,
 	); err != nil {
 		t.Fatal(err)
