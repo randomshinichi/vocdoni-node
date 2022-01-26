@@ -65,8 +65,9 @@ require (
 	github.com/vocdoni/storage-proofs-eth-go v0.1.6
 	go.uber.org/zap v1.19.1
 	go.vocdoni.io/proto v1.13.3-0.20211213155005-46b4177904ba
-	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce
-	golang.org/x/net v0.0.0-20211208012354-db4efeb81f4b
+	golang.org/x/crypto v0.0.0-20210920023735-84f357641f63
+	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f
+	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
 	google.golang.org/protobuf v1.27.1
 )
 

@@ -14,6 +14,7 @@ import (
 	"go.vocdoni.io/dvote/client"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/proto/build/go/models"
+	"golang.org/x/term"
 )
 
 const (
@@ -35,7 +36,10 @@ var keysNewCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Step 1/2: First we will generate the key and save it on your disk, encrypted.\nUnlike other blockchains, an Account for this key must first be created on the blockchain for others to send you funds (or any other operations).\nOnce the key is generated and saved, we will send a SetAccountInfo transaction to the blockchain in order to create an Account for this key. \nFear not, if you have only generated a key, you may skip the key generation process and directly send the SetAccountInfo transaction by re-running 'keys new <full path to keyfile>'\n\n")
 
-		password := utils.GetPassPhraseWithList("Your new key file will be locked with a password. Please give a password.", true, 0, nil)
+		password, err := PromptPassword("Your new key file will be locked with a password. Please give a password: ")
+		if err != nil {
+			return err
+		}
 
 		key, keyPath, err := storeNewKey(rand.Reader, password)
 		if err != nil {
@@ -87,7 +91,10 @@ var keysImportCmd = &cobra.Command{
 		if err != nil {
 			utils.Fatalf("Failed to load the private key: %v", err)
 		}
-		passphrase := utils.GetPassPhraseWithList("Your new account is locked with a password. Please give a password. Do not forget this password.", true, 0, nil)
+		passphrase, err := PromptPassword("Your new account is locked with a password. Please give a password.")
+		if err != nil {
+			return err
+		}
 		id, err := uuid.NewRandom()
 		if err != nil {
 			panic(fmt.Sprintf("Could not create random uuid: %v", err))
@@ -145,7 +152,10 @@ var keysChangePasswordCmd = &cobra.Command{
 			return err
 		}
 
-		passwordNew := utils.GetPassPhraseWithList("Enter new password:", false, 0, nil)
+		passwordNew, err := PromptPassword("Enter new password:")
+		if err != nil {
+			return err
+		}
 		keyJSONNew, err := ethkeystore.EncryptKey(k, passwordNew, scryptN, scryptP)
 		if err != nil {
 			return fmt.Errorf("couldn't encrypt the key with new password: %s", err)
@@ -160,10 +170,23 @@ func openKeyfile(path, prompt string) (*ethkeystore.Key, error) {
 	if err != nil {
 		return nil, err
 	}
-	password := utils.GetPassPhraseWithList(prompt, false, 0, nil)
-	k, err := ethkeystore.DecryptKey(keyJSON, password)
+	password, err := PromptPassword(prompt)
+	if err != nil {
+		return nil, err
+	}
+	k, err := ethkeystore.DecryptKey(keyJSON, string(password))
 	if err != nil {
 		return nil, fmt.Errorf("couldn't decrypt the key with given password: %s", err)
 	}
 	return k, nil
+}
+
+func PromptPassword(prompt string) (string, error) {
+	fmt.Print(prompt)
+	password, err := term.ReadPassword(int(os.Stdin.Fd()))
+	if err != nil {
+		return "", err
+	}
+	fmt.Print("\n")
+	return string(password), err
 }

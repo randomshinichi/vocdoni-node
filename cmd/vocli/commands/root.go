@@ -62,7 +62,7 @@ var sendCmd = &cobra.Command{
 			return err
 		}
 
-		key, err := openKeyfile(args[0], "Please unlock your key")
+		key, err := openKeyfile(args[0], "Please unlock your key: ")
 		if err != nil {
 			return fmt.Errorf("could not open keyfile %s", err)
 		}
@@ -148,7 +148,7 @@ var genFaucetCmd = &cobra.Command{
 	Short: "Generate a payload allowing another account to claim tokens from this account.",
 	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		key, err := openKeyfile(args[0], "Please unlock your key")
+		key, err := openKeyfile(args[0], "Please unlock your key: ")
 		if err != nil {
 			return fmt.Errorf("could not open keyfile %s", err)
 		}
@@ -202,7 +202,7 @@ var mintCmd = &cobra.Command{
 			return err
 		}
 
-		key, err := openKeyfile(args[0], "Please unlock your key")
+		key, err := openKeyfile(args[0], "Please unlock your key: ")
 		if err != nil {
 			return fmt.Errorf("could not open keyfile %s", err)
 		}
