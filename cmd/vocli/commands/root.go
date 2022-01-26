@@ -46,6 +46,13 @@ func Execute() {
 var rootCmd = &cobra.Command{
 	Use:   "vocli",
 	Short: "vocli is a convenience CLI that helps you do things on Vochain",
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		if debug {
+			log.Init("debug", "stdout")
+		} else {
+			log.Init("error", "stdout")
+		}
+	},
 }
 
 var sendCmd = &cobra.Command{
