@@ -110,7 +110,7 @@ var keysChangePasswordCmd = &cobra.Command{
 	Short: "Changes the password of a keyfile.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		k, err := openKeyfile(args[0], "Enter old password:")
+		k, err := openKeyfile(args[0], "Enter old password")
 		if err != nil {
 			return err
 		}

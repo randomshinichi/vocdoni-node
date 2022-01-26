@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"go.vocdoni.io/dvote/api"
+	"go.vocdoni.io/dvote/client"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/proto/build/go/models"
 	"google.golang.org/protobuf/proto"
@@ -54,7 +56,7 @@ func generateKeyFilename(address common.Address) (string, error) {
 	}
 
 	t := time.Now()
-	keyFilename := fmt.Sprintf("%s-%d-%d-%d.%s", address.Hex(), t.Year(), t.Month(), t.Day(), keyExt) // 0xDad23752bB8F80Bb82E6A2422A762fdeAf8dAb74-2022-1-13.vokey
+	keyFilename := fmt.Sprintf("%s-%d-%d-%d%s", address.Hex(), t.Year(), t.Month(), t.Day(), keyExt) // 0xDad23752bB8F80Bb82E6A2422A762fdeAf8dAb74-2022-1-13.vokey
 	return path.Join(keysDir, keyFilename), nil
 }
 
@@ -71,4 +73,17 @@ func signTx(tx *models.Tx, signer *ethereum.SignKeys) (*models.SignedTx, error) 
 		return nil, fmt.Errorf("could not sign transaction: %s", err)
 	}
 	return stx, nil
+}
+
+func submitRawTx(stx *models.SignedTx, c *client.Client) (*api.APIresponse, error) {
+	var err error
+	fmt.Println("Sending Transaction")
+	req := &api.APIrequest{}
+	req.Method = "submitRawTx"
+	req.Payload, err = proto.Marshal(stx)
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal transaction: %v", err)
+	}
+
+	return c.Request(*req, nil)
 }
