@@ -19,11 +19,14 @@ import (
 
 var gatewayRpc string
 var debug bool
+var infoUri string
+var nonce uint32
 
 func init() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.PersistentFlags().StringVarP(&gatewayRpc, "url", "u", "https://gw1.dev.vocdoni.net/dvote", "Gateway RPC URL")
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "prints additional information")
+	rootCmd.PersistentFlags().Uint32VarP(&nonce, "nonce", "n", 0, "account nonce to use when sending transaction (useful when it cannot be queried ahead of time, e.g. offline transaction signing)")
 	rootCmd.AddCommand(accountCmd)
 	rootCmd.AddCommand(sendCmd)
 	rootCmd.AddCommand(claimFaucetCmd)
@@ -34,6 +37,8 @@ func init() {
 	keysCmd.AddCommand(keysImportCmd)
 	keysCmd.AddCommand(keysListCmd)
 	keysCmd.AddCommand(keysChangePasswordCmd)
+
+	keysNewCmd.Flags().StringVarP(&infoUri, "info-uri", "i", "ipfs://", "Set the Account's InfoURI")
 }
 
 func Execute() {

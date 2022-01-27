@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.vocdoni.io/dvote/client"
 	"go.vocdoni.io/dvote/crypto/ethereum"
+	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/proto/build/go/models"
 	"golang.org/x/term"
 )
@@ -31,32 +32,41 @@ var keysCmd = &cobra.Command{
 
 var keysNewCmd = &cobra.Command{
 	Use:   "new",
-	Short: "Generate a new key and create its corresponding Account on the chain.",
-	Args:  cobra.ExactArgs(0),
+	Short: "Generate a new key and create its corresponding Account on the chain. Also lets you send a SetAccountInfo Tx.",
+	Long:  "Generate a new key and send a SetAccountInfo Tx in one step. Or, skip the key generation step and directly send a SetAccountInfo Tx for an existing keyfile.",
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Printf("Step 1/2: First we will generate the key and save it on your disk, encrypted.\nUnlike other blockchains, an Account for this key must first be created on the blockchain for others to send you funds (or any other operations).\nOnce the key is generated and saved, we will send a SetAccountInfo transaction to the blockchain in order to create an Account for this key. \nFear not, if you have only generated a key, you may skip the key generation process and directly send the SetAccountInfo transaction by re-running 'keys new <full path to keyfile>'\n\n")
+		var key *ethkeystore.Key
+		var err error
+		if len(args) == 0 {
+			fmt.Printf("Step 1/2: First we will generate the key and save it on your disk, encrypted.\nUnlike other blockchains, an Account for this key must first be created on the blockchain for others to send you funds (or any other operations).\nOnce the key is generated and saved, we will send a SetAccountInfo transaction to the blockchain in order to create an Account for this key. \nFear not, if you have only generated a key, you may skip the key generation process and directly send the SetAccountInfo transaction by re-running 'keys new <full path to keyfile>'\n\n")
 
-		password, err := PromptPassword("Your new key file will be locked with a password. Please give a password: ")
-		if err != nil {
-			return err
+			password, err := PromptPassword("Your new key file will be locked with a password. Please give a password: ")
+			if err != nil {
+				return err
+			}
+
+			key, keyPath, err := storeNewKey(rand.Reader, password)
+			if err != nil {
+				return fmt.Errorf("couldn't generate a new key", err)
+			}
+			fmt.Printf("\nYour new key was generated\n")
+			fmt.Printf("Public address of the key:   %s\n", key.Address.Hex())
+			fmt.Printf("Path of the secret key file: %s\n", keyPath)
+			fmt.Printf("- As usual, please BACKUP your key file and REMEMBER your password!\n")
+		} else {
+			key, err = openKeyfile(args[0], "Please unlock your key: ")
+			if err != nil {
+				return err
+			}
 		}
-
-		key, keyPath, err := storeNewKey(rand.Reader, password)
-		if err != nil {
-			return fmt.Errorf("couldn't generate a new key", err)
-		}
-		fmt.Printf("\nYour new key was generated\n")
-		fmt.Printf("Public address of the key:   %s\n", key.Address.Hex())
-		fmt.Printf("Path of the secret key file: %s\n", keyPath)
-		fmt.Printf("- As usual, please BACKUP your key file and REMEMBER your password!\n")
-
 		fmt.Printf("\nStep 2/2: Sending SetAccountInfo to create an Account for key %s on %s\n", key.Address.String(), gatewayRpc)
 		tx := &models.Tx{
 			Payload: &models.Tx_SetAccountInfo{
 				SetAccountInfo: &models.SetAccountInfoTx{
 					Txtype:  models.TxType_SET_ACCOUNT_INFO,
-					Nonce:   0,
-					InfoURI: "ipfs://",
+					Nonce:   nonce,
+					InfoURI: infoUri,
 					Account: key.Address.Bytes(),
 				},
 			}}
@@ -76,7 +86,13 @@ var keysNewCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println("resp", resp)
+
+		if resp.Ok {
+			fmt.Printf("Account created on chain %s\n", gatewayRpc)
+		} else {
+			log.Error(resp)
+			return fmt.Errorf(resp.Message)
+		}
 		return nil
 	},
 }
