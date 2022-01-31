@@ -28,7 +28,7 @@ func TestSetAccountInfoTx(t *testing.T) {
 		t.Fatal(err)
 	}
 	// set treasurer account (same as signer for testing purposes)
-	if err := app.State.setTreasurer(signer.Address()); err != nil {
+	if err := app.State.SetTreasurer(signer.Address()); err != nil {
 		t.Fatal(err)
 	}
 	// should create an account if address does not exist
@@ -115,7 +115,7 @@ func TestMintTokensTx(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	app.State.setTreasurer(signer.Address())
+	app.State.SetTreasurer(signer.Address())
 	app.Commit()
 
 	// should mint
@@ -210,7 +210,7 @@ func TestSetDelegateTx(t *testing.T) {
 		t.Fatal(err)
 	}
 	// set treasurer account (same as signer for testing purposes)
-	if err := app.State.setTreasurer(signer.Address()); err != nil {
+	if err := app.State.SetTreasurer(signer.Address()); err != nil {
 		t.Fatal(err)
 	}
 	// create account
@@ -361,7 +361,7 @@ func TestSendTokensTx(t *testing.T) {
 		t.Fatal(err)
 	}
 	// set treasurer account (same as signer for testing purposes)
-	if err := app.State.setTreasurer(signer.Address()); err != nil {
+	if err := app.State.SetTreasurer(signer.Address()); err != nil {
 		t.Fatal(err)
 	}
 	// create account
@@ -495,7 +495,7 @@ func TestCollectFaucetTx(t *testing.T) {
 		t.Fatal(err)
 	}
 	// set treasurer account (same as signer for testing purposes)
-	if err := app.State.setTreasurer(signer.Address()); err != nil {
+	if err := app.State.SetTreasurer(signer.Address()); err != nil {
 		t.Fatal(err)
 	}
 	// create account
@@ -620,7 +620,7 @@ func TestSetTransactionsCosts(t *testing.T) {
 		t.Fatal(err)
 	}
 	// set treasurer account (same as signer for testing purposes)
-	if err := app.State.setTreasurer(signer.Address()); err != nil {
+	if err := app.State.SetTreasurer(signer.Address()); err != nil {
 		t.Fatal(err)
 	}
 	// create account
