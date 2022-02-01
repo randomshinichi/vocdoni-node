@@ -1254,7 +1254,7 @@ func (c *Client) GenerateFaucetPackage(from *ethereum.SignKeys, to common.Addres
 	}, nil
 }
 
-func (c *Client) CollectFaucet(signer *ethereum.SignKeys, fpkg *models.FaucetPackage, nonce uint32) error {
+func (c *Client) CollectFaucet(signer *ethereum.SignKeys, fpkg *models.FaucetPackage) error {
 	var req api.APIrequest
 	var err error
 	req.Method = "submitRawTx"

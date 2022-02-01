@@ -111,7 +111,7 @@ var claimFaucetCmd = &cobra.Command{
 			return fmt.Errorf("could not unmarshal the faucet package: %s", err)
 		}
 
-		err = c.CollectFaucet(signer, faucetPackage, 0)
+		err = c.CollectFaucet(signer, faucetPackage)
 		if err != nil {
 			return err
 		}

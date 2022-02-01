@@ -1223,11 +1223,8 @@ func testAllTransactions(
 	if err != nil {
 		log.Fatal(err)
 	}
-	newSignerAccount, err = mainClient.GetAccount(newSigner, newSigner.Address())
-	if err != nil {
-		log.Fatal(err)
-	}
-	if err := mainClient.CollectFaucet(newSigner, faucetPkg, newSignerAccount.Nonce); err != nil {
+
+	if err := mainClient.CollectFaucet(newSigner, faucetPkg); err != nil {
 		log.Fatal(err)
 	}
 	log.Infof("%s claimed %d tokens from %s", newSigner.Address().String(), 500, randomSigner.Address().String())
