@@ -13,8 +13,6 @@ import (
 	"github.com/spf13/cobra"
 	"go.vocdoni.io/dvote/client"
 	"go.vocdoni.io/dvote/crypto/ethereum"
-	"go.vocdoni.io/dvote/log"
-	"go.vocdoni.io/proto/build/go/models"
 	"golang.org/x/term"
 )
 
@@ -61,38 +59,19 @@ var keysNewCmd = &cobra.Command{
 			}
 		}
 		fmt.Printf("\nStep 2/2: Sending SetAccountInfo to create an Account for key %s on %s\n", key.Address.String(), gatewayRpc)
-		tx := &models.Tx{
-			Payload: &models.Tx_SetAccountInfo{
-				SetAccountInfo: &models.SetAccountInfoTx{
-					Txtype:  models.TxType_SET_ACCOUNT_INFO,
-					Nonce:   nonce,
-					InfoURI: infoUri,
-					Account: key.Address.Bytes(),
-				},
-			}}
 
 		signer := ethereum.NewSignKeys()
 		signer.Private = *key.PrivateKey
-		stx, err := signTx(tx, signer)
+		client, err := client.New(gatewayRpc)
+		if err != nil {
+			return err
+		}
+		err = client.CreateAccount(signer, infoUri, nonce)
 		if err != nil {
 			return err
 		}
 
-		c, err := client.New(gatewayRpc)
-		if err != nil {
-			return err
-		}
-		resp, err := submitRawTx(stx, c)
-		if err != nil {
-			return err
-		}
-
-		if resp.Ok {
-			fmt.Printf("Account created on chain %s\n", gatewayRpc)
-		} else {
-			log.Error(resp)
-			return fmt.Errorf(resp.Message)
-		}
+		fmt.Printf("Account created on chain %s\n", gatewayRpc)
 		return nil
 	},
 }

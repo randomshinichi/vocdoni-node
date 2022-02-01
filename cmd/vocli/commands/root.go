@@ -3,13 +3,11 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
-	"math/rand"
 	"os"
 	"strconv"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
-	"go.vocdoni.io/dvote/api"
 	"go.vocdoni.io/dvote/client"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
@@ -69,14 +67,14 @@ var sendCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("sorry, what amount did you say again? %s", err)
 		}
-		c, err := client.New(gatewayRpc)
-		if err != nil {
-			return err
-		}
 
 		key, err := openKeyfile(args[0], "Please unlock your key: ")
 		if err != nil {
 			return fmt.Errorf("could not open keyfile %s", err)
+		}
+		c, err := client.New(gatewayRpc)
+		if err != nil {
+			return err
 		}
 
 		nonce, err := getNonce(c, key.Address.Hex())
@@ -84,44 +82,33 @@ var sendCmd = &cobra.Command{
 			return fmt.Errorf("could not lookup the account's nonce, try specifying manually: %s", err)
 		}
 
-		tx := &models.Tx{
-			Payload: &models.Tx_SendTokens{SendTokens: &models.SendTokensTx{
-				Txtype: models.TxType_SEND_TOKENS,
-				Nonce:  *nonce,
-				From:   key.Address.Bytes(),
-				To:     common.HexToAddress(args[1]).Bytes(),
-				Value:  amount,
-			}}}
-
 		signer := ethereum.NewSignKeys()
 		signer.Private = *key.PrivateKey
-		stx, err := signTx(tx, signer)
-		if err != nil {
-			return err
-		}
-
-		resp, err := submitRawTx(stx, c)
-		if err != nil {
-			return err
-		}
-		fmt.Println("resp", resp)
-		return nil
+		err = c.SendTokens(signer, common.HexToAddress(args[1]), amount, *nonce)
+		return err
 	},
 }
 
 var claimFaucetCmd = &cobra.Command{
-	Use:   "claimfaucet <hex encoded faucet package>",
+	Use:   "claimfaucet <to keystore, hex encoded faucet package>",
 	Short: "Claim tokens from another account, using a payload generated from that account that acts as an authorization.",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		faucetPackageRaw, err := hex.DecodeString(args[0])
+		faucetPackageRaw, err := hex.DecodeString(args[1])
 		if err != nil {
 			return fmt.Errorf("could not decode the hex-encoded input: %s", err)
 		}
+
 		c, err := client.New(gatewayRpc)
 		if err != nil {
 			return err
 		}
+		key, err := openKeyfile(args[0], "Please unlock your key: ")
+		if err != nil {
+			return err
+		}
+		signer := ethereum.NewSignKeys()
+		signer.Private = *key.PrivateKey
 
 		faucetPackage := &models.FaucetPackage{}
 		err = proto.Unmarshal(faucetPackageRaw, faucetPackage)
@@ -129,28 +116,10 @@ var claimFaucetCmd = &cobra.Command{
 			return fmt.Errorf("could not unmarshal the faucet package: %s", err)
 		}
 
-		tx := &models.Tx{
-			Payload: &models.Tx_CollectFaucet{
-				CollectFaucet: &models.CollectFaucetTx{
-					TxType:        models.TxType_COLLECT_FAUCET,
-					FaucetPackage: faucetPackage,
-				},
-			},
-		}
-
-		fmt.Println("Sending Transaction")
-		req := &api.APIrequest{}
-		req.Method = "submitRawTx"
-		req.Payload, err = proto.Marshal(tx)
-		if err != nil {
-			return fmt.Errorf("could not marshal transaction: %v", err)
-		}
-		resp, err := c.Request(*req, nil)
+		err = c.CollectFaucet(signer, faucetPackage, 0)
 		if err != nil {
 			return err
 		}
-
-		fmt.Println("resp", resp)
 		return nil
 	},
 }
@@ -164,38 +133,28 @@ var genFaucetCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("could not open keyfile %s", err)
 		}
+		signer := ethereum.NewSignKeys()
+		signer.Private = *key.PrivateKey
 		amount, err := strconv.ParseUint(args[2], 10, 64)
 		if err != nil {
 			return fmt.Errorf("sorry, what amount did you say again? %s", err)
 		}
 
-		faucetPackage := &models.FaucetPackage{
-			Payload: &models.FaucetPayload{
-				Identifier: rand.Uint64(),
-				To:         common.HexToAddress(args[1]).Bytes(),
-				Amount:     amount,
-			},
-			Signature: []byte{},
-		}
-		log.Debug(faucetPackage)
-
-		signer := ethereum.NewSignKeys()
-		signer.Private = *key.PrivateKey
-		faucetPayloadRaw, err := proto.Marshal(faucetPackage.Payload)
-		if err != nil {
-			return fmt.Errorf("could not marshal the faucet payload for signing: %s", err)
-		}
-		faucetPackage.Signature, err = signer.Sign(faucetPayloadRaw)
+		c, err := client.New(gatewayRpc)
 		if err != nil {
 			return err
 		}
 
-		faucetPackageRaw, err := proto.Marshal(faucetPackage)
+		faucetPackage, err := c.GenerateFaucetPackage(signer, common.HexToAddress(args[1]), amount)
 		if err != nil {
 			return err
 		}
-		fmt.Println("Faucet Package", hex.EncodeToString(faucetPackageRaw))
-		fmt.Println("Faucet Package's Signature", hex.EncodeToString(faucetPackage.Signature))
+
+		faucetPackageMarshaled, err := proto.Marshal(faucetPackage)
+		if err != nil {
+			return err
+		}
+		fmt.Println(hex.EncodeToString(faucetPackageMarshaled))
 		return nil
 	},
 }
@@ -218,32 +177,16 @@ var mintCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("could not open keyfile %s", err)
 		}
+		signer := ethereum.NewSignKeys()
+		signer.Private = *key.PrivateKey
 
 		nonce, err := getNonce(c, key.Address.Hex())
 		if err != nil {
 			return fmt.Errorf("could not lookup the account's nonce, try specifying manually: %s", err)
 		}
 
-		tx := &models.Tx{
-			Payload: &models.Tx_MintTokens{MintTokens: &models.MintTokensTx{
-				Txtype: models.TxType_MINT_TOKENS,
-				Nonce:  *nonce,
-				To:     common.HexToAddress(args[1]).Bytes(),
-				Value:  amount,
-			}}}
-		signer := ethereum.NewSignKeys()
-		signer.Private = *key.PrivateKey
-		stx, err := signTx(tx, signer)
-		if err != nil {
-			return err
-		}
-
-		resp, err := submitRawTx(stx, c)
-		if err != nil {
-			return err
-		}
-		fmt.Println("resp", resp)
-		return nil
+		err = c.MintTokens(signer, common.HexToAddress(args[1]), amount, *nonce)
+		return err
 	},
 }
 
@@ -252,11 +195,11 @@ var accountCmd = &cobra.Command{
 	Short: "Get information about an account. The address may or may not include the 0x prefix",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := client.New(gatewayRpc)
+		c, err := client.New(gatewayRpc)
 		if err != nil {
 			return err
 		}
-		resp, err := getAccount(client, args[0])
+		resp, err := c.GetAccount(nil, common.HexToAddress(args[0]))
 		if err != nil {
 			return err
 		}
@@ -265,20 +208,10 @@ var accountCmd = &cobra.Command{
 	},
 }
 
-func getAccount(c *client.Client, address string) (*api.APIresponse, error) {
-	req := &api.APIrequest{}
-	req.EntityId = common.HexToAddress(address).Bytes()
-	req.Method = "getAccount"
-	resp, err := c.Request(*req, nil)
+func getNonce(c *client.Client, address string) (*uint32, error) {
+	resp, err := c.GetAccount(nil, common.HexToAddress(address))
 	if err != nil {
 		return nil, err
-	} else if resp.Nonce == nil {
-		return resp, fmt.Errorf("account %s does not exist", address)
 	}
-	return resp, nil
-}
-
-func getNonce(c *client.Client, address string) (*uint32, error) {
-	resp, err := getAccount(c, address)
-	return resp.Nonce, err
+	return &resp.Account.Nonce, nil
 }
