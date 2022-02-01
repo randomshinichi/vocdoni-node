@@ -53,7 +53,7 @@ var keysNewCmd = &cobra.Command{
 			fmt.Printf("Path of the secret key file: %s\n", keyPath)
 			fmt.Printf("- As usual, please BACKUP your key file and REMEMBER your password!\n")
 		} else {
-			key, err = openKeyfile(args[0], "Please unlock your key: ")
+			key, _, err = openKeyfile(args[0], "Please unlock your key: ")
 			if err != nil {
 				return err
 			}
@@ -142,7 +142,7 @@ var keysChangePasswordCmd = &cobra.Command{
 	Short: "Changes the password of a keyfile.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		k, err := openKeyfile(args[0], "Enter old password")
+		k, _, err := openKeyfile(args[0], "Enter old password")
 		if err != nil {
 			return err
 		}
@@ -160,20 +160,24 @@ var keysChangePasswordCmd = &cobra.Command{
 	},
 }
 
-func openKeyfile(path, prompt string) (*ethkeystore.Key, error) {
+func openKeyfile(path, prompt string) (*ethkeystore.Key, *ethereum.SignKeys, error) {
 	keyJSON, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	password, err := PromptPassword(prompt)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	k, err := ethkeystore.DecryptKey(keyJSON, string(password))
 	if err != nil {
-		return nil, fmt.Errorf("couldn't decrypt the key with given password: %s", err)
+		return nil, nil, fmt.Errorf("couldn't decrypt the key with given password: %s", err)
 	}
-	return k, nil
+
+	signer := ethereum.NewSignKeys()
+	signer.Private = *k.PrivateKey
+	signer.Public = k.PrivateKey.PublicKey
+	return k, signer, nil
 }
 
 func PromptPassword(prompt string) (string, error) {

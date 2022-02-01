@@ -9,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 	"go.vocdoni.io/dvote/client"
-	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/proto/build/go/models"
 	"google.golang.org/protobuf/proto"
@@ -68,7 +67,7 @@ var sendCmd = &cobra.Command{
 			return fmt.Errorf("sorry, what amount did you say again? %s", err)
 		}
 
-		key, err := openKeyfile(args[0], "Please unlock your key: ")
+		_, signer, err := openKeyfile(args[0], "Please unlock your key: ")
 		if err != nil {
 			return fmt.Errorf("could not open keyfile %s", err)
 		}
@@ -77,13 +76,11 @@ var sendCmd = &cobra.Command{
 			return err
 		}
 
-		nonce, err := getNonce(c, key.Address.Hex())
+		nonce, err := getNonce(c, signer.AddressString())
 		if err != nil {
 			return fmt.Errorf("could not lookup the account's nonce, try specifying manually: %s", err)
 		}
 
-		signer := ethereum.NewSignKeys()
-		signer.Private = *key.PrivateKey
 		err = c.SendTokens(signer, common.HexToAddress(args[1]), amount, *nonce)
 		return err
 	},
@@ -103,12 +100,10 @@ var claimFaucetCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		key, err := openKeyfile(args[0], "Please unlock your key: ")
+		_, signer, err := openKeyfile(args[0], "Please unlock your key: ")
 		if err != nil {
 			return err
 		}
-		signer := ethereum.NewSignKeys()
-		signer.Private = *key.PrivateKey
 
 		faucetPackage := &models.FaucetPackage{}
 		err = proto.Unmarshal(faucetPackageRaw, faucetPackage)
@@ -129,12 +124,10 @@ var genFaucetCmd = &cobra.Command{
 	Short: "Generate a payload allowing another account to claim tokens from this account.",
 	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		key, err := openKeyfile(args[0], "Please unlock your key: ")
+		_, signer, err := openKeyfile(args[0], "Please unlock your key: ")
 		if err != nil {
 			return fmt.Errorf("could not open keyfile %s", err)
 		}
-		signer := ethereum.NewSignKeys()
-		signer.Private = *key.PrivateKey
 		amount, err := strconv.ParseUint(args[2], 10, 64)
 		if err != nil {
 			return fmt.Errorf("sorry, what amount did you say again? %s", err)
@@ -173,14 +166,12 @@ var mintCmd = &cobra.Command{
 			return err
 		}
 
-		key, err := openKeyfile(args[0], "Please unlock your key: ")
+		_, signer, err := openKeyfile(args[0], "Please unlock your key: ")
 		if err != nil {
 			return fmt.Errorf("could not open keyfile %s", err)
 		}
-		signer := ethereum.NewSignKeys()
-		signer.Private = *key.PrivateKey
 
-		nonce, err := getNonce(c, key.Address.Hex())
+		nonce, err := getNonce(c, signer.AddressString())
 		if err != nil {
 			return fmt.Errorf("could not lookup the account's nonce, try specifying manually: %s", err)
 		}
