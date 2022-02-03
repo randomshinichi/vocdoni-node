@@ -213,7 +213,7 @@ func (vc *Vocone) SetTreasurer(treasurer common.Address) error {
 }
 
 func (vc *Vocone) SetBulkTxCosts(txCosts uint64) error {
-	for k, _ := range vochain.TxTypeCostToStateKey {
+	for k := range vochain.TxTypeCostToStateKey {
 		log.Debugf("setting tx cost for txtype %s", models.TxType_name[int32(k)])
 		err := vc.app.State.SetTxCost(k, txCosts)
 		if err != nil {

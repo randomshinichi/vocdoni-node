@@ -46,7 +46,7 @@ var keysNewCmd = &cobra.Command{
 
 			key, keyPath, err := storeNewKey(rand.Reader, password)
 			if err != nil {
-				return fmt.Errorf("couldn't generate a new key", err)
+				return fmt.Errorf("couldn't generate a new key: %v", err)
 			}
 			fmt.Printf("\nYour new key was generated\n")
 			fmt.Printf("Public address of the key:   %s\n", key.Address.Hex())
@@ -114,7 +114,7 @@ var keysImportCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("Your imported key is stored at ", keyPath)
+		fmt.Printf("Your imported key is stored at %v", keyPath)
 		return nil
 	},
 }

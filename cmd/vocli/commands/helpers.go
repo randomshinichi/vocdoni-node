@@ -47,7 +47,7 @@ func getKeysDir() (string, error) {
 func generateKeyFilename(address common.Address) (string, error) {
 	keysDir, err := getKeysDir()
 	if err != nil {
-		return "", fmt.Errorf("couldn't get a suitable datadir (normally ~/.dvote/keys) - {}", err)
+		return "", fmt.Errorf("couldn't get a suitable datadir (normally ~/.dvote/keys) - %v", err)
 	}
 
 	t := time.Now()
