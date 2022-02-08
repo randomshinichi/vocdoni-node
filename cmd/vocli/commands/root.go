@@ -18,18 +18,19 @@ var gatewayRpc string
 var debug bool
 var infoUri string
 var nonce uint32
+var home string
 
 func init() {
-	rootCmd.CompletionOptions.DisableDefaultCmd = true
-	rootCmd.PersistentFlags().StringVarP(&gatewayRpc, "url", "u", "https://gw1.dev.vocdoni.net/dvote", "Gateway RPC URL")
-	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "prints additional information")
-	rootCmd.PersistentFlags().Uint32VarP(&nonce, "nonce", "n", 0, "account nonce to use when sending transaction (useful when it cannot be queried ahead of time, e.g. offline transaction signing)")
-	rootCmd.AddCommand(accountCmd)
-	rootCmd.AddCommand(sendCmd)
-	rootCmd.AddCommand(claimFaucetCmd)
-	rootCmd.AddCommand(genFaucetCmd)
-	rootCmd.AddCommand(mintCmd)
-	rootCmd.AddCommand(keysCmd)
+	RootCmd.CompletionOptions.DisableDefaultCmd = true
+	RootCmd.PersistentFlags().StringVarP(&gatewayRpc, "url", "u", "https://gw1.dev.vocdoni.net/dvote", "Gateway RPC URL")
+	RootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "prints additional information")
+	RootCmd.PersistentFlags().Uint32VarP(&nonce, "nonce", "n", 0, "account nonce to use when sending transaction (useful when it cannot be queried ahead of time, e.g. offline transaction signing)")
+	RootCmd.AddCommand(accountCmd)
+	RootCmd.AddCommand(sendCmd)
+	RootCmd.AddCommand(claimFaucetCmd)
+	RootCmd.AddCommand(genFaucetCmd)
+	RootCmd.AddCommand(mintCmd)
+	RootCmd.AddCommand(keysCmd)
 	keysCmd.AddCommand(keysNewCmd)
 	keysCmd.AddCommand(keysImportCmd)
 	keysCmd.AddCommand(keysListCmd)
@@ -39,13 +40,13 @@ func init() {
 }
 
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := RootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
 	os.Exit(1)
 }
 
-var rootCmd = &cobra.Command{
+var RootCmd = &cobra.Command{
 	Use:   "vocli",
 	Short: "vocli is a convenience CLI that helps you do things on Vochain",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
