@@ -124,11 +124,17 @@ var keysListCmd = &cobra.Command{
 	Short: "Lists the keys that vocli knows about.",
 	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		keysDir, err := getKeysDir()
+		keysDir, err := getKeysDir(home)
 		if err != nil {
 			return err
 		}
-		return filepath.Walk(keysDir, func(path string, info os.FileInfo, err error) error {
+
+		// check if directory exists first
+		if _, err := os.Stat(keysDir); os.IsNotExist(err) {
+			return err
+		}
+
+		return filepath.WalkDir(keysDir, func(path string, info os.DirEntry, err error) error {
 			if !info.IsDir() && (filepath.Ext(path) == keyExt) {
 				fmt.Println(path)
 			}

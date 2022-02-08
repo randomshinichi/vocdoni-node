@@ -27,25 +27,30 @@ func writeKeyFile(filename string, k []byte) error {
 	return nil
 }
 
-func getDataDir() (string, error) {
-	h, err := os.UserHomeDir()
+// getDataDir returns ~/.dvote when passed a "" as an argument, and <path>/~.dvote otherwise
+func getDataDir(root string) (string, error) {
+	var err error
+	if root == "" {
+		root, err = os.UserHomeDir()
+	}
 	if err != nil {
 		return "", err
 	}
 
-	return h + "/.dvote", nil
+	return path.Join(root, ".dvote"), nil
 }
 
-func getKeysDir() (string, error) {
-	dataDir, err := getDataDir()
+func getKeysDir(root string) (string, error) {
+	dataDir, err := getDataDir(root)
 	if err != nil {
 		return "", err
 	}
+
 	return path.Join(dataDir, "keys"), nil
 }
 
 func generateKeyFilename(address common.Address) (string, error) {
-	keysDir, err := getKeysDir()
+	keysDir, err := getKeysDir(home)
 	if err != nil {
 		return "", fmt.Errorf("couldn't get a suitable datadir (normally ~/.dvote/keys) - %v", err)
 	}
