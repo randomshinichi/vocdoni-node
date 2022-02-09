@@ -19,11 +19,13 @@ var debug bool
 var infoUri string
 var nonce uint32
 var home string
+var password string
 
 func init() {
 	RootCmd.CompletionOptions.DisableDefaultCmd = true
 	RootCmd.PersistentFlags().StringVarP(&gatewayRpc, "url", "u", "https://gw1.dev.vocdoni.net/dvote", "Gateway RPC URL")
 	RootCmd.PersistentFlags().StringVar(&home, "home", "", "root directory where all vochain files are stored (normally ~/.dvote)")
+	RootCmd.PersistentFlags().StringVar(&password, "password", "", "supply the password as an argument instead of prompting")
 	RootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "prints additional information")
 	RootCmd.PersistentFlags().Uint32VarP(&nonce, "nonce", "n", 0, "account nonce to use when sending transaction (useful when it cannot be queried ahead of time, e.g. offline transaction signing)")
 	RootCmd.AddCommand(accountCmd)

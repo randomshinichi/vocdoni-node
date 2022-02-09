@@ -186,12 +186,18 @@ func openKeyfile(path, prompt string) (*ethkeystore.Key, *ethereum.SignKeys, err
 	return k, signer, nil
 }
 
+// PromptPassword asks the user for a password, but if one was specified through
+// the --password argument, it simply returns that variable without printing
+// anything
 func PromptPassword(prompt string) (string, error) {
-	fmt.Print(prompt)
-	password, err := term.ReadPassword(int(os.Stdin.Fd()))
-	if err != nil {
-		return "", err
+	if password == "" {
+		fmt.Print(prompt)
+		p, err := term.ReadPassword(int(os.Stdin.Fd()))
+		if err != nil {
+			return "", err
+		}
+		fmt.Print("\n")
+		return string(p), err
 	}
-	fmt.Print("\n")
-	return string(password), err
+	return password, nil
 }
