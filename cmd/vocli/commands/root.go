@@ -3,6 +3,7 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 
@@ -20,8 +21,12 @@ var infoUri string
 var nonce uint32
 var home string
 var password string
+var Stdout io.Writer
+var Stderr io.Writer
 
 func init() {
+	Stdout = os.Stdout
+	Stderr = os.Stderr
 	RootCmd.CompletionOptions.DisableDefaultCmd = true
 	RootCmd.PersistentFlags().StringVarP(&gatewayRpc, "url", "u", "https://gw1.dev.vocdoni.net/dvote", "Gateway RPC URL")
 	RootCmd.PersistentFlags().StringVar(&home, "home", "", "root directory where all vochain files are stored (normally ~/.dvote)")
@@ -151,7 +156,7 @@ var genFaucetCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(hex.EncodeToString(faucetPackageMarshaled))
+		fmt.Fprintln(Stdout, hex.EncodeToString(faucetPackageMarshaled))
 		return nil
 	},
 }
@@ -198,7 +203,7 @@ var accountCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println("resp", resp.String(), "err", err)
+		fmt.Fprintln(Stdout, "resp", resp.String(), "err", err)
 		return err
 	},
 }

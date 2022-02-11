@@ -37,7 +37,7 @@ var keysNewCmd = &cobra.Command{
 		var key *ethkeystore.Key
 		var err error
 		if len(args) == 0 {
-			fmt.Printf("Step 1/2: First we will generate the key and save it on your disk, encrypted.\nUnlike other blockchains, an Account for this key must first be created on the blockchain for others to send you funds (or any other operations).\nOnce the key is generated and saved, we will send a SetAccountInfo transaction to the blockchain in order to create an Account for this key. \nFear not, if you have only generated a key, you may skip the key generation process and directly send the SetAccountInfo transaction by re-running 'keys new <full path to keyfile>'\n\n")
+			fmt.Fprintf(Stdout, "Step 1/2: First we will generate the key and save it on your disk, encrypted.\nUnlike other blockchains, an Account for this key must first be created on the blockchain for others to send you funds (or any other operations).\nOnce the key is generated and saved, we will send a SetAccountInfo transaction to the blockchain in order to create an Account for this key. \nFear not, if you have only generated a key, you may skip the key generation process and directly send the SetAccountInfo transaction by re-running 'keys new <full path to keyfile>'\n\n")
 
 			password, err := PromptPassword("Your new key file will be locked with a password. Please give a password: ")
 			if err != nil {
@@ -48,17 +48,17 @@ var keysNewCmd = &cobra.Command{
 			if err != nil {
 				return fmt.Errorf("couldn't generate a new key: %v", err)
 			}
-			fmt.Printf("\nYour new key was generated\n")
-			fmt.Printf("Public address of the key:   %s\n", key.Address.Hex())
-			fmt.Printf("Path of the secret key file: %s\n", keyPath)
-			fmt.Printf("- As usual, please BACKUP your key file and REMEMBER your password!\n")
+			fmt.Fprintf(Stdout, "\nYour new key was generated\n")
+			fmt.Fprintf(Stdout, "Public address of the key:   %s\n", key.Address.Hex())
+			fmt.Fprintf(Stdout, "Path of the secret key file: %s\n", keyPath)
+			fmt.Fprintf(Stdout, "- As usual, please BACKUP your key file and REMEMBER your password!\n")
 		} else {
 			key, _, err = openKeyfile(args[0], "Please unlock your key: ")
 			if err != nil {
 				return err
 			}
 		}
-		fmt.Printf("\nStep 2/2: Sending SetAccountInfo to create an Account for key %s on %s\n", key.Address.String(), gatewayRpc)
+		fmt.Fprintf(Stdout, "\nStep 2/2: Sending SetAccountInfo to create an Account for key %s on %s\n", key.Address.String(), gatewayRpc)
 
 		signer := ethereum.NewSignKeys()
 		signer.Private = *key.PrivateKey
@@ -71,7 +71,7 @@ var keysNewCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("Account created on chain %s\n", gatewayRpc)
+		fmt.Fprintf(Stdout, "Account created on chain %s\n", gatewayRpc)
 		return nil
 	},
 }
@@ -114,7 +114,7 @@ var keysImportCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("Your imported key is stored at %v", keyPath)
+		fmt.Fprintf(Stdout, "Your imported key is stored at %v", keyPath)
 		return nil
 	},
 }
@@ -136,7 +136,7 @@ var keysListCmd = &cobra.Command{
 
 		return filepath.WalkDir(keysDir, func(path string, info os.DirEntry, err error) error {
 			if !info.IsDir() && (filepath.Ext(path) == keyExt) {
-				fmt.Println(path)
+				fmt.Fprintln(Stdout, path)
 			}
 			return nil
 		})
@@ -191,12 +191,12 @@ func openKeyfile(path, prompt string) (*ethkeystore.Key, *ethereum.SignKeys, err
 // anything
 func PromptPassword(prompt string) (string, error) {
 	if password == "" {
-		fmt.Print(prompt)
+		fmt.Fprint(Stdout, prompt)
 		p, err := term.ReadPassword(int(os.Stdin.Fd()))
 		if err != nil {
 			return "", err
 		}
-		fmt.Print("\n")
+		fmt.Fprint(Stdout, "\n")
 		return string(p), err
 	}
 	return password, nil
