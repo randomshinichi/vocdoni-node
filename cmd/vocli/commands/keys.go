@@ -29,9 +29,9 @@ var keysCmd = &cobra.Command{
 }
 
 var keysNewCmd = &cobra.Command{
-	Use:   "new",
-	Short: "Generate a new key and create its corresponding Account on the chain. Also lets you send a SetAccountInfo Tx.",
-	Long:  "Generate a new key and send a SetAccountInfo Tx in one step. Or, skip the key generation step and directly send a SetAccountInfo Tx for an existing keyfile.",
+	Use:   "new [pre-existing keyfile]",
+	Short: "Generate a new key and create its corresponding Account on the chain. Or just create the Account onchain.",
+	Long:  "Generate a new key and send a SetAccountInfo Tx in one step. Or, if you already have a keyfile, send a SetAccountInfo Tx.",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var key *ethkeystore.Key
