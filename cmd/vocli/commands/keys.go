@@ -154,7 +154,7 @@ var keysChangePasswordCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-
+		password = ""
 		passwordNew, err := PromptPassword("Enter new password:")
 		if err != nil {
 			return err
