@@ -35,6 +35,7 @@ var keysNewCmd = &cobra.Command{
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var key *ethkeystore.Key
+		var keyPath string
 		var err error
 		if len(args) == 0 {
 			fmt.Fprintf(Stdout, "Step 1/2: First we will generate the key and save it on your disk, encrypted.\nUnlike other blockchains, an Account for this key must first be created on the blockchain for others to send you funds (or any other operations).\nOnce the key is generated and saved, we will send a SetAccountInfo transaction to the blockchain in order to create an Account for this key. \nFear not, if you have only generated a key, you may skip the key generation process and directly send the SetAccountInfo transaction by re-running 'keys new <full path to keyfile>'\n\n")
@@ -44,7 +45,7 @@ var keysNewCmd = &cobra.Command{
 				return err
 			}
 
-			key, keyPath, err := storeNewKey(rand.Reader, password)
+			key, keyPath, err = storeNewKey(rand.Reader, password)
 			if err != nil {
 				return fmt.Errorf("couldn't generate a new key: %v", err)
 			}
@@ -62,6 +63,7 @@ var keysNewCmd = &cobra.Command{
 
 		signer := ethereum.NewSignKeys()
 		signer.Private = *key.PrivateKey
+		signer.Public = key.PrivateKey.PublicKey
 		client, err := client.New(gatewayRpc)
 		if err != nil {
 			return err
