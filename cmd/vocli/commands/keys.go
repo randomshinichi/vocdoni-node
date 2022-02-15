@@ -1,10 +1,12 @@
 package commands
 
 import (
+	"bufio"
 	"crypto/rand"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/cmd/utils"
@@ -194,12 +196,24 @@ func openKeyfile(path, prompt string) (*ethkeystore.Key, *ethereum.SignKeys, err
 func PromptPassword(prompt string) (string, error) {
 	if password == "" {
 		fmt.Fprint(Stdout, prompt)
-		p, err := term.ReadPassword(int(os.Stdin.Fd()))
-		if err != nil {
-			return "", err
+		// if this is a real terminal (not a test case mocked stdin), use the
+		// standard term.ReadPassword() function
+		if term.IsTerminal(int(Stdin.Fd())) {
+			p, err := term.ReadPassword(int(Stdin.Fd()))
+			if err != nil {
+				return "", err
+			}
+			return string(p), nil
+		} else {
+			// if this is a test case and stdin is mocked out, read from Stdin in a
+			// different way
+			reader := bufio.NewReader(Stdin)
+			p, err := reader.ReadString('\n') // returns 'newPassword\n'
+			if err != nil {
+				return "", err
+			}
+			return strings.TrimSpace(p), nil // newPassword
 		}
-		fmt.Fprint(Stdout, "\n")
-		return string(p), err
 	}
 	return password, nil
 }

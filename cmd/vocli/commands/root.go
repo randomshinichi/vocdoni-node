@@ -23,6 +23,7 @@ var home string
 var password string
 var Stdout io.Writer
 var Stderr io.Writer
+var Stdin *os.File
 
 func init() {
 	Stdout = os.Stdout
