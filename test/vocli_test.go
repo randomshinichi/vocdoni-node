@@ -162,20 +162,24 @@ func setupInternalVocone(t *testing.T, dir string, treasurer *ethereum.SignKeys)
 	return fmt.Sprintf("http://127.0.0.1:%v/dvote", port), port
 }
 
-func generateKeyAndReturnAddress(t *testing.T, url string, stdArgs []string) (string, string) {
+func generateKeyAndReturnAddress(t *testing.T, url string, stdArgs []string) (address string, keyPath string) {
 	t.Helper()
 	_, stdout, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"keys", "new", fmt.Sprintf("-u=%s", url)}, stdArgs...), "")
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	return parseImportOutput(t, stdout)
+}
+
+func parseImportOutput(t *testing.T, stdout string) (address, keyPath string) {
+	t.Helper()
 	a := strings.TrimSpace(addressRegexp.FindString(stdout))
 	a2 := strings.Split(a, " ")
 	newAddr := a2[len(a2)-1]
-	fmt.Println("newAddr", newAddr)
 
 	k := strings.TrimSpace(pathRegexp.FindString(stdout))
 	k2 := strings.Split(k, " ")
-	keyPath := k2[len(k2)-1]
-	fmt.Println("keyPath", keyPath)
+	keyPath = k2[len(k2)-1]
 	return newAddr, keyPath
 }
