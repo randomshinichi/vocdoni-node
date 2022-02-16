@@ -117,6 +117,8 @@ var keysImportCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		fmt.Fprintln(Stdout, "Public address of the key:", crypto.PubkeyToAddress(key.PublicKey))
+		fmt.Fprintln(Stdout, "Path of the secret key file:", keyPath)
 
 		fmt.Fprintf(Stdout, "Your imported key is stored at %v", keyPath)
 		return nil

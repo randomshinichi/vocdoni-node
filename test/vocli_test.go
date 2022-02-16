@@ -52,7 +52,7 @@ func TestVocli(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(stdout, fmt.Sprintf("Your imported key is stored at %s", dir)) {
+		if !strings.Contains(stdout, dir) {
 			t.Errorf("vocli import should report that the imported key was stored in directory %s", dir)
 		}
 	})
