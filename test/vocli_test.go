@@ -33,11 +33,7 @@ func TestVocli(t *testing.T) {
 	if err := alice.Generate(); err != nil {
 		t.Fatal(err)
 	}
-	oracle := ethereum.NewSignKeys()
-	if err := oracle.Generate(); err != nil {
-		t.Fatal(err)
-	}
-	url, _ := setupInternalVocone(t, dir, alice, oracle)
+	url, _ := setupInternalVocone(t, dir, alice)
 	// url := "http://localhost:9095/dvote"
 	// SETUP done, let's start testing
 	stdArgs := []string{"--password=password", fmt.Sprintf("--home=%s", dir)}
@@ -139,9 +135,13 @@ func executeCommandC(t *testing.T, root *cobra.Command, args []string, input str
 	return c, stdoutBuf.String(), stderrBuf.String(), err
 }
 
-func setupInternalVocone(t *testing.T, dir string, treasurer, oracle *ethereum.SignKeys) (string, int) {
+func setupInternalVocone(t *testing.T, dir string, treasurer *ethereum.SignKeys) (string, int) {
 	t.Helper()
 
+	oracle := ethereum.NewSignKeys()
+	if err := oracle.Generate(); err != nil {
+		t.Fatal(err)
+	}
 	vc, err := vocone.NewVocone(dir, oracle)
 	if err != nil {
 		t.Fatal(err)
