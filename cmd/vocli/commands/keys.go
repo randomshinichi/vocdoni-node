@@ -61,22 +61,7 @@ var keysNewCmd = &cobra.Command{
 				return err
 			}
 		}
-		fmt.Fprintf(Stdout, "\nStep 2/2: Sending SetAccountInfo to create an Account for key %s on %s\n", key.Address.String(), gatewayRpc)
-
-		signer := ethereum.NewSignKeys()
-		signer.Private = *key.PrivateKey
-		signer.Public = key.PrivateKey.PublicKey
-		client, err := client.New(gatewayRpc)
-		if err != nil {
-			return err
-		}
-		err = client.CreateAccount(signer, infoUri, nonce)
-		if err != nil {
-			return err
-		}
-
-		fmt.Fprintf(Stdout, "Account created on chain %s\n", gatewayRpc)
-		return nil
+		return createAccount(key, gatewayRpc)
 	},
 }
 
@@ -120,8 +105,7 @@ var keysImportCmd = &cobra.Command{
 		fmt.Fprintln(Stdout, "Public address of the key:", crypto.PubkeyToAddress(key.PublicKey))
 		fmt.Fprintln(Stdout, "Path of the secret key file:", keyPath)
 
-		fmt.Fprintf(Stdout, "Your imported key is stored at %v", keyPath)
-		return nil
+		return createAccount(k, gatewayRpc)
 	},
 }
 
@@ -218,4 +202,23 @@ func PromptPassword(prompt string) (string, error) {
 		}
 	}
 	return password, nil
+}
+
+func createAccount(key *ethkeystore.Key, gatewayRpc string) error {
+	fmt.Fprintf(Stdout, "\nStep 2/2: Sending SetAccountInfo to create an Account for key %s on %s\n", key.Address.String(), gatewayRpc)
+
+	signer := ethereum.NewSignKeys()
+	signer.Private = *key.PrivateKey
+	signer.Public = key.PrivateKey.PublicKey
+	client, err := client.New(gatewayRpc)
+	if err != nil {
+		return err
+	}
+	err = client.CreateAccount(signer, infoUri, nonce)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(Stdout, "Account created on chain %s\n", gatewayRpc)
+	return nil
 }
