@@ -26,7 +26,7 @@ import (
 var addressRegexp = regexp.MustCompile("Public address of the key:.*")
 var pathRegexp = regexp.MustCompile("Path of the secret key file:.*")
 
-func TestVocli(t *testing.T) {
+func TestVocliKeys(t *testing.T) {
 	dir := t.TempDir()
 
 	alice := ethereum.NewSignKeys()
@@ -97,6 +97,65 @@ func TestVocli(t *testing.T) {
 		}
 		if !strings.Contains(stdout, fmt.Sprintf("created on chain %s", url)) {
 			t.Errorf("stdout should mention that the new account was created on the chain, but instead: %s", stdout)
+		}
+	})
+}
+
+func TestVocli(t *testing.T) {
+	dir := t.TempDir()
+
+	alice := ethereum.NewSignKeys()
+	if err := alice.Generate(); err != nil {
+		t.Fatal(err)
+	}
+
+	url, _ := setupInternalVocone(t, dir, alice)
+	stdArgs := []string{"--password=password", fmt.Sprintf("--home=%s", dir)}
+
+	privKey := crypto.FromECDSA(&alice.Private)
+	if err := ioutil.WriteFile(path.Join(dir, "alicePrivateKey"), []byte(hex.EncodeToString(privKey)), 0700); err != nil {
+		t.Fatal(err)
+	}
+
+	_, stdout, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"keys", "import", path.Join(dir, "/alicePrivateKey"), fmt.Sprintf("-u=%s", url)}, stdArgs...), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	aliceAddress, aliceKeyPath := parseImportOutput(t, stdout)
+
+	_, _, _, err = executeCommandC(t, vocli.RootCmd, append([]string{"mint", aliceKeyPath, aliceAddress, "100000000", fmt.Sprintf("-u=%s", url)}, stdArgs...), "")
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Run("vocli mint alice -> newAccount", func(t *testing.T) {
+		newAccount, _ := generateKeyAndReturnAddress(t, url, stdArgs)
+		_, _, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"mint", aliceKeyPath, newAccount, "100", fmt.Sprintf("-u=%s", url)}, stdArgs...), "")
+		if err != nil {
+			t.Error(err)
+		}
+		time.Sleep(time.Second * 1)
+		_, stdout, _, err = executeCommandC(t, vocli.RootCmd, append([]string{"info", newAccount, fmt.Sprintf("-u=%s", url)}, stdArgs...), "")
+		if err != nil {
+			t.Error(err)
+		}
+		if !strings.Contains(stdout, "100") {
+			t.Errorf("newAccount should now have 100 coins but apparently he doesn't: %s", stdout)
+		}
+	})
+	t.Run("vocli send alice -> newAccount", func(t *testing.T) {
+		newAccount, _ := generateKeyAndReturnAddress(t, url, stdArgs)
+		_, _, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"send", aliceKeyPath, newAccount, "98", fmt.Sprintf("-u=%s", url)}, stdArgs...), "")
+		if err != nil {
+			t.Error(err)
+		}
+		time.Sleep(time.Second * 1)
+		_, stdout, _, err = executeCommandC(t, vocli.RootCmd, append([]string{"info", newAccount, fmt.Sprintf("-u=%s", url)}, stdArgs...), "")
+		if err != nil {
+			t.Error(err)
+		}
+		if !strings.Contains(stdout, "98") {
+			t.Errorf("newAccount should now have 98 coins but apparently he doesn't: %s", stdout)
 		}
 	})
 }
