@@ -44,7 +44,7 @@ func TestVocliKeys(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		_, stdout, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"keys", "import", path.Join(dir, "/alicePrivateKey")}, stdArgs...), "")
+		_, stdout, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"keys", "import", path.Join(dir, "/alicePrivateKey")}, stdArgs...), "", true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -55,7 +55,7 @@ func TestVocliKeys(t *testing.T) {
 
 	var aliceKeyPath string
 	t.Run("vocli keys list", func(t *testing.T) {
-		_, stdout, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"keys", "list"}, stdArgs...), "")
+		_, stdout, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"keys", "list"}, stdArgs...), "", true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -66,7 +66,7 @@ func TestVocliKeys(t *testing.T) {
 	})
 
 	t.Run("vocli keys changepassword aliceKeyPath", func(t *testing.T) {
-		_, _, _, err := executeCommandC(t, vocli.RootCmd, []string{"keys", "changepassword", aliceKeyPath, "--password=password"}, "fdsa\n")
+		_, _, _, err := executeCommandC(t, vocli.RootCmd, []string{"keys", "changepassword", aliceKeyPath, "--password=password"}, "fdsa\n", true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -81,7 +81,7 @@ func TestVocliKeys(t *testing.T) {
 	})
 
 	t.Run("vocli keys new (no connection to chain, should report error and not crash)", func(t *testing.T) {
-		_, _, stderr, err := executeCommandC(t, vocli.RootCmd, append([]string{"keys", "new", "-u=http://nonexistent:9095"}, stdArgs...), "")
+		_, _, stderr, err := executeCommandC(t, vocli.RootCmd, append([]string{"keys", "new", "-u=http://nonexistent:9095"}, stdArgs...), "", true)
 		if err == nil {
 			t.Error("vocli keys new without a connection to a working chain should fail, but got no error instead")
 		}
@@ -91,7 +91,7 @@ func TestVocliKeys(t *testing.T) {
 	})
 
 	t.Run("vocli keys new", func(t *testing.T) {
-		_, stdout, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"keys", "new", fmt.Sprintf("-u=%s", url)}, stdArgs...), "")
+		_, stdout, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"keys", "new", fmt.Sprintf("-u=%s", url)}, stdArgs...), "", true)
 		if err != nil {
 			t.Error(err)
 		}
@@ -110,32 +110,33 @@ func TestVocli(t *testing.T) {
 	}
 
 	url, _ := setupInternalVocone(t, dir, alice)
-	stdArgs := []string{"--password=password", fmt.Sprintf("--home=%s", dir)}
+	stdArgs := []string{"--password=password", fmt.Sprintf("--home=%s", dir), fmt.Sprintf("-u=%s", url)}
 
 	privKey := crypto.FromECDSA(&alice.Private)
 	if err := ioutil.WriteFile(path.Join(dir, "alicePrivateKey"), []byte(hex.EncodeToString(privKey)), 0700); err != nil {
 		t.Fatal(err)
 	}
 
-	_, stdout, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"keys", "import", path.Join(dir, "/alicePrivateKey"), fmt.Sprintf("-u=%s", url)}, stdArgs...), "")
+	_, stdout, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"keys", "import", path.Join(dir, "/alicePrivateKey")}, stdArgs...), "", false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	aliceAddress, aliceKeyPath := parseImportOutput(t, stdout)
 
-	_, _, _, err = executeCommandC(t, vocli.RootCmd, append([]string{"mint", aliceKeyPath, aliceAddress, "100000000", fmt.Sprintf("-u=%s", url)}, stdArgs...), "")
+	_, _, _, err = executeCommandC(t, vocli.RootCmd, append([]string{"mint", aliceKeyPath, aliceAddress, "100000000"}, stdArgs...), "", false)
 	if err != nil {
 		t.Error(err)
 	}
+	time.Sleep(time.Second * 3)
 
 	t.Run("vocli mint alice -> newAccount", func(t *testing.T) {
 		newAccount, _ := generateKeyAndReturnAddress(t, url, stdArgs)
-		_, _, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"mint", aliceKeyPath, newAccount, "100", fmt.Sprintf("-u=%s", url)}, stdArgs...), "")
+		time.Sleep(time.Second * 3)
+		_, _, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"mint", aliceKeyPath, newAccount, "100"}, stdArgs...), "", true)
 		if err != nil {
 			t.Error(err)
 		}
-		time.Sleep(time.Second * 1)
-		_, stdout, _, err = executeCommandC(t, vocli.RootCmd, append([]string{"info", newAccount, fmt.Sprintf("-u=%s", url)}, stdArgs...), "")
+		_, stdout, _, err = executeCommandC(t, vocli.RootCmd, append([]string{"info", newAccount}, stdArgs...), "", true)
 		if err != nil {
 			t.Error(err)
 		}
@@ -145,12 +146,12 @@ func TestVocli(t *testing.T) {
 	})
 	t.Run("vocli send alice -> newAccount", func(t *testing.T) {
 		newAccount, _ := generateKeyAndReturnAddress(t, url, stdArgs)
-		_, _, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"send", aliceKeyPath, newAccount, "98", fmt.Sprintf("-u=%s", url)}, stdArgs...), "")
+		_, _, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"send", aliceKeyPath, newAccount, "98"}, stdArgs...), "", true)
 		if err != nil {
 			t.Error(err)
 		}
-		time.Sleep(time.Second * 1)
-		_, stdout, _, err = executeCommandC(t, vocli.RootCmd, append([]string{"info", newAccount, fmt.Sprintf("-u=%s", url)}, stdArgs...), "")
+		time.Sleep(time.Second * 3)
+		_, stdout, _, err = executeCommandC(t, vocli.RootCmd, append([]string{"info", newAccount}, stdArgs...), "", true)
 		if err != nil {
 			t.Error(err)
 		}
@@ -158,9 +159,29 @@ func TestVocli(t *testing.T) {
 			t.Errorf("newAccount should now have 98 coins but apparently he doesn't: %s", stdout)
 		}
 	})
+	t.Run("vocli genfaucet a -> b", func(t *testing.T) {
+		a, aKeyPath := generateKeyAndReturnAddress(t, url, stdArgs)
+		b, bKeyPath := generateKeyAndReturnAddress(t, url, stdArgs)
+
+		_, _, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"mint", aliceKeyPath, a, "1000"}, stdArgs...), "", true)
+		if err != nil {
+			t.Error(err)
+		}
+		time.Sleep(time.Second * 3)
+
+		_, stdout, _, err = executeCommandC(t, vocli.RootCmd, append([]string{"genfaucet", aKeyPath, b, "990"}, stdArgs...), "", true)
+		if err != nil {
+			t.Error(err)
+		}
+
+		_, stdout, _, err = executeCommandC(t, vocli.RootCmd, append([]string{"claimfaucet", bKeyPath, strings.TrimSpace(stdout)}, stdArgs...), "", true)
+		if err != nil {
+			t.Error(err)
+		}
+	})
 }
 
-func executeCommandC(t *testing.T, root *cobra.Command, args []string, input string) (*cobra.Command, string, string, error) {
+func executeCommandC(t *testing.T, root *cobra.Command, args []string, input string, verbose bool) (*cobra.Command, string, string, error) {
 	t.Helper()
 	// setup stdout/stderr redirection.
 	var stdoutBuf = new(bytes.Buffer)
@@ -185,8 +206,10 @@ func executeCommandC(t *testing.T, root *cobra.Command, args []string, input str
 	t.Log("vocli", args)
 	c, err := root.ExecuteC()
 
-	fmt.Printf("\nSTDOUT\n%s", stdoutBuf)
-	fmt.Printf("STDERR\n%s", stderrBuf)
+	if verbose {
+		t.Logf("\nSTDOUT\n%s", stdoutBuf)
+		t.Logf("STDERR\n%s", stderrBuf)
+	}
 
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
@@ -213,7 +236,7 @@ func setupInternalVocone(t *testing.T, dir string, treasurer *ethereum.SignKeys)
 	if err = vc.SetBulkTxCosts(10); err != nil {
 		t.Fatal(err)
 	}
-	vc.SetBlockTimeTarget(time.Millisecond * 500)
+	vc.SetBlockTimeTarget(time.Second * 2)
 	port := 13000 + util.RandomInt(0, 2000)
 	vc.EnableAPI("127.0.0.1", port, "/dvote")
 	go vc.Start()
@@ -223,7 +246,7 @@ func setupInternalVocone(t *testing.T, dir string, treasurer *ethereum.SignKeys)
 
 func generateKeyAndReturnAddress(t *testing.T, url string, stdArgs []string) (address string, keyPath string) {
 	t.Helper()
-	_, stdout, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"keys", "new", fmt.Sprintf("-u=%s", url)}, stdArgs...), "")
+	_, stdout, _, err := executeCommandC(t, vocli.RootCmd, append([]string{"keys", "new", fmt.Sprintf("-u=%s", url)}, stdArgs...), "", false)
 	if err != nil {
 		t.Fatal(err)
 	}
