@@ -18,10 +18,15 @@ import (
 	"go.vocdoni.io/dvote/log"
 )
 
+type HttpPoster interface {
+	Post(url, contentType string, body io.Reader) (resp *http.Response, err error)
+	CloseIdleConnections()
+}
+
 // Client holds an API client.
 type Client struct {
 	Addr string
-	HTTP *http.Client
+	HTTP HttpPoster
 }
 
 // New starts a connection with the given endpoint address.
