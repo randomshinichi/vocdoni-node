@@ -1027,6 +1027,10 @@ func testTokenTransactions(
 	if err := testSetAccountDelegate(mainClient, mainSigner, otherSigner); err != nil {
 		log.Fatal(err)
 	}
+	log.Info("testCollectFaucet")
+	if err := testCollectFaucet(mainClient, mainSigner, otherSigner); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func testSetTxCost(mainClient *client.Client, treasurerSigner *ethereum.SignKeys) error {
@@ -1311,5 +1315,29 @@ func testSetAccountDelegate(mainClient *client.Client, signer, signer2 *ethereum
 	if len(acc.DelegateAddrs) != 0 {
 		log.Fatalf("expected %s to have 0 delegates got %d", signer.Address(), len(acc.DelegateAddrs))
 	}
+	return nil
+}
+
+func testCollectFaucet(mainClient *client.Client, signer, signer2 *ethereum.SignKeys) error {
+	acc1, err := mainClient.GetAccount(signer, signer.Address())
+	if err != nil {
+		return err
+	}
+	fmt.Println("account1", acc1)
+	faucetPkg, err := vochain.GenerateFaucetPackage(signer, signer2.Address(), 100)
+	if err != nil {
+		return err
+	}
+
+	err = mainClient.CollectFaucet(signer2, faucetPkg)
+	if err != nil {
+		return err
+	}
+
+	acc2, err := mainClient.GetAccount(signer2, signer2.Address())
+	if err != nil {
+		return err
+	}
+	fmt.Println("account2", acc2)
 	return nil
 }
