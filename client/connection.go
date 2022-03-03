@@ -135,26 +135,3 @@ func (c *Client) ForTest(tb testing.TB, req *api.APIrequest) func(
 		return resp
 	}
 }
-
-type TestClient struct {
-	tb     testing.TB
-	client Client
-}
-
-func NewForTest(tb testing.TB, addr string) *TestClient {
-	client, err := New(addr)
-	if err != nil {
-		tb.Fatal(err)
-	}
-	tb.Cleanup(func() { _ = client.Close() })
-
-	return &TestClient{tb: tb, client: *client}
-}
-
-func (c *TestClient) Request(req api.APIrequest, signer *ethereum.SignKeys) *api.APIresponse {
-	resp, err := c.client.Request(req, signer)
-	if err != nil {
-		c.tb.Fatal(err)
-	}
-	return resp
-}
