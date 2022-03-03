@@ -74,7 +74,7 @@ func TestCensus(t *testing.T) {
 
 	// Send the API requets
 	var req api.APIrequest
-	doRequest := cl.ForTest(t, &req)
+	doRequest := cl.ForIntegrationTest(t, &req)
 
 	// Create census
 	req.CensusID = "test"

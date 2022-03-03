@@ -68,7 +68,7 @@ func censusBench(b *testing.B, cl *client.Client, size int) {
 	reset := func(r *api.APIrequest) {
 		*r = *zeroReq
 	}
-	doRequest := cl.ForTest(b, req)
+	doRequest := cl.ForIntegrationTest(b, req)
 
 	// Create census
 	log.Infof("Create census")

@@ -56,7 +56,7 @@ func BenchmarkVochain(b *testing.B) {
 	reset := func(r *api.APIrequest) {
 		*r = *zeroReq
 	}
-	doRequest := cl.ForTest(b, req)
+	doRequest := cl.ForIntegrationTest(b, req)
 
 	log.Info("get info")
 	resp := doRequest("getInfo", nil)
@@ -218,7 +218,7 @@ func voteBench(b *testing.B, cl *client.Client, s *ethereum.SignKeys,
 	reset := func(r *api.APIrequest) {
 		*r = *zeroReq
 	}
-	doRequest := cl.ForTest(b, req)
+	doRequest := cl.ForIntegrationTest(b, req)
 
 	// create envelope
 	log.Infof("adding vote using key [%s]", s.AddressString())
