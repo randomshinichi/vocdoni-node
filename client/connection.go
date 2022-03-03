@@ -119,7 +119,7 @@ func (c *Client) Request(req api.APIrequest, signer *ethereum.SignKeys) (*api.AP
 	return &respInner, nil
 }
 
-// Request makes a request to the previously connected endpoint
+// ForIntegrationTest returns a Client.Request() that is meant for integration test usage
 func (c *Client) ForIntegrationTest(tb testing.TB, req *api.APIrequest) func(
 	method string, signer *ethereum.SignKeys) *api.APIresponse {
 	return func(method string, signer *ethereum.SignKeys) *api.APIresponse {
