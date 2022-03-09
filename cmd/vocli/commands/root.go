@@ -28,6 +28,7 @@ var Stdin *os.File
 func init() {
 	Stdout = os.Stdout
 	Stderr = os.Stderr
+	Stdin = os.Stdin
 	RootCmd.CompletionOptions.DisableDefaultCmd = true
 	RootCmd.PersistentFlags().StringVarP(&gatewayRpc, "url", "u", "https://gw1.dev.vocdoni.net/dvote", "Gateway RPC URL")
 	RootCmd.PersistentFlags().StringVar(&home, "home", "", "root directory where all vochain files are stored (normally ~/.dvote)")
@@ -44,6 +45,7 @@ func init() {
 	keysCmd.AddCommand(keysImportCmd)
 	keysCmd.AddCommand(keysListCmd)
 	keysCmd.AddCommand(keysChangePasswordCmd)
+	keysCmd.AddCommand(keysShowPrivKeyCmd)
 
 	keysNewCmd.Flags().StringVarP(&infoUri, "info-uri", "i", "ipfs://", "Set the Account's InfoURI")
 }

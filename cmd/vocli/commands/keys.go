@@ -3,6 +3,7 @@ package commands
 import (
 	"bufio"
 	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -153,6 +154,22 @@ var keysChangePasswordCmd = &cobra.Command{
 		}
 
 		return writeKeyFile(args[0], keyJSONNew)
+	},
+}
+
+var keysShowPrivKeyCmd = &cobra.Command{
+	Use:   "showprivkey <filename>",
+	Short: "Prints the hex private key.",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		k, _, err := openKeyfile(args[0], "Enter password:")
+		if err != nil {
+			return err
+		}
+		p := crypto.FromECDSA(k.PrivateKey)
+		pHex := hex.EncodeToString(p)
+		fmt.Fprintf(Stdout, "\n%s\n", pHex)
+		return nil
 	},
 }
 
