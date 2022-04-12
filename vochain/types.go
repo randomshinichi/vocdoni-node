@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -109,6 +110,55 @@ func (t *TransactionCosts) AsMap() map[models.TxType]uint64 {
 		b[key] = tValue.Field(i).Uint()
 	}
 	return b
+}
+
+func (t *TransactionCosts) UnmarshalJSON(data []byte) error {
+	var tmpTxCost map[string]string
+	if err := json.Unmarshal(data, &tmpTxCost); err != nil {
+		return err
+	}
+	/*
+		tmpTxCost = {
+			"Tx_SetProcessStatus":"0",
+			"Tx_SetProcessCensus":"1"
+			...
+		}
+	*/
+	tTxCosts := reflect.TypeOf(t).Elem()
+	vTxCosts := reflect.ValueOf(t).Elem()
+	for i := 0; i < tTxCosts.NumField(); i++ {
+		// lookup json struct tag for each field in t
+		f := tTxCosts.Field(i)
+		tag, ok := f.Tag.Lookup("json")
+		if !ok {
+			return fmt.Errorf("%s does not have a json struct tag", f.Name)
+		}
+		// convert string into uint64
+		c, err := strconv.ParseUint(tmpTxCost[tag], 10, 64)
+		if err != nil {
+			return err
+		}
+		// set the uint
+		vTxCosts.Field(i).SetUint(c)
+	}
+	return nil
+}
+
+func (t *TransactionCosts) MarshalJSON() ([]byte, error) {
+	tmpTxCost := make(map[string]string)
+	tTxCosts := reflect.TypeOf(t).Elem()
+	vTxCosts := reflect.ValueOf(t).Elem()
+	for i := 0; i < tTxCosts.NumField(); i++ {
+		// lookup json struct tag for each field in t
+		f := tTxCosts.Field(i)
+		tag, ok := f.Tag.Lookup("json")
+		if !ok {
+			return []byte{}, fmt.Errorf("%s does not have a json struct tag", f.Name)
+		}
+		// convert uint64 into string, put it into the map
+		tmpTxCost[tag] = strconv.FormatUint(vTxCosts.Field(i).Uint(), 10)
+	}
+	return json.Marshal(tmpTxCost)
 }
 
 // TxCostNameToTxTypeMap maps a valid string to a txType
