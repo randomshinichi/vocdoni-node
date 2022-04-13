@@ -192,6 +192,8 @@ func BenchmarkVochain(b *testing.B) {
 	}
 
 	// send votes in parallel
+	log.Info("sleeping for a few seconds to let a new block be mined")
+	time.Sleep(5 * time.Second)
 	count := int32(0)
 	b.ResetTimer()
 
