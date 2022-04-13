@@ -174,18 +174,19 @@ func BenchmarkVochain(b *testing.B) {
 	}
 
 	// check if process is created
-	log.Infof("check if process was created")
+	log.Infof("check if process %s was created", hexProcessID)
 	reset(req)
 	req.ProcessID = processID
 	failures := 20
 	for {
 		resp = doRequest("getProcessInfo", nil)
 		if resp.Ok {
+			log.Infof("process %s successfully created", hexProcessID)
 			break
 		}
 		failures--
 		if failures == 0 {
-			b.Fatalf("processID does not exist in the blockchain")
+			b.Fatalf("processID %s does not exist in the blockchain", hexProcessID)
 		}
 		time.Sleep(time.Second)
 	}
