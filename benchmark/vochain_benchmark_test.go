@@ -190,10 +190,25 @@ func BenchmarkVochain(b *testing.B) {
 		}
 		time.Sleep(time.Second)
 	}
+	log.Info("waiting for the process to start")
+	for {
+		procInfo := doRequest("getProcessInfo", nil)
+		if procInfo.Ok {
+			if procInfo.Process.Status == int32(models.ProcessStatus_READY) {
+				height := doRequest("getBlockHeight", nil)
+				if *height.Height >= procInfo.Process.StartBlock {
+					break
+				}
+			}
+		}
+		failures--
+		if failures == 0 {
+			b.Fatalf("processID %s should be started by now", hexProcessID)
+		}
+		time.Sleep(time.Second)
+	}
 
 	// send votes in parallel
-	log.Info("sleeping for a few seconds to let a new block be mined")
-	time.Sleep(5 * time.Second)
 	count := int32(0)
 	b.ResetTimer()
 
