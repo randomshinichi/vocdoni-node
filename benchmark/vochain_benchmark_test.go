@@ -243,7 +243,7 @@ func voteBench(b *testing.B, cl *client.Client, s *ethereum.SignKeys,
 
 	pub, _ := s.HexString()
 	// generate envelope proof
-	log.Infof("generating proof for key %s", pub)
+	log.Infof("generating proof that address %s with public key %s is in the census", s.AddressString(), pub)
 	req.CensusID = fmt.Sprintf("%x", censusRoot)
 	req.CensusKey = s.PublicKey()
 	req.Digested = false
