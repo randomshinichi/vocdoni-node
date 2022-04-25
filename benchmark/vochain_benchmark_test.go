@@ -221,6 +221,7 @@ func BenchmarkVochain(b *testing.B) {
 		for pb.Next() {
 			voteBench(b,
 				cl,
+				dvoteServer.VochainAPP.ChainID(),
 				keySet[atomic.AddInt32(&count, 1)],
 				censusRoot,
 				processID)
@@ -228,7 +229,7 @@ func BenchmarkVochain(b *testing.B) {
 	})
 }
 
-func voteBench(b *testing.B, cl *client.Client, s *ethereum.SignKeys,
+func voteBench(b *testing.B, cl *client.Client, chainID string, s *ethereum.SignKeys,
 	censusRoot, processID []byte) {
 	// API requests
 	req := &api.APIrequest{}
@@ -282,7 +283,7 @@ func voteBench(b *testing.B, cl *client.Client, s *ethereum.SignKeys,
 	if err != nil {
 		b.Fatal(err)
 	}
-	stx.Signature, err = s.SignVocdoniTx(stx.Tx, "")
+	stx.Signature, err = s.SignVocdoniTx(stx.Tx, chainID)
 	if err != nil {
 		b.Fatal(err)
 	}
