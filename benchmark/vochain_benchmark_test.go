@@ -3,10 +3,12 @@ package test
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/vocdoni/arbo"
 	"go.vocdoni.io/dvote/api"
 	"go.vocdoni.io/dvote/client"
 	"go.vocdoni.io/dvote/crypto/ethereum"
@@ -271,6 +273,7 @@ func voteBench(b *testing.B, cl *client.Client, chainID string, s *ethereum.Sign
 			Payload: &models.Proof_Arbo{
 				Arbo: &models.ProofArbo{
 					Type:     models.ProofArbo_BLAKE2B,
+					Value:    arbo.BigIntToBytes(32, big.NewInt(1)),
 					Siblings: resp.Siblings,
 				},
 			},
