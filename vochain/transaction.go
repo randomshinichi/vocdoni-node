@@ -829,7 +829,7 @@ func SetTransactionCostsTxCheck(vtx *models.Tx, txBytes, signature []byte, state
 	}
 	// check signature recovered address
 	if common.BytesToAddress(treasurer.Address) != sigAddress {
-		return 0, fmt.Errorf("address recovered not treasurer: expected %s got %s", treasurer.String(), sigAddress.String())
+		return 0, fmt.Errorf("address recovered not treasurer: expected %s got %s", common.BytesToAddress(treasurer.Address), sigAddress.String())
 	}
 	return tx.Value, nil
 }
