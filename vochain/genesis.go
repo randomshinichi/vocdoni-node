@@ -158,26 +158,26 @@ var Genesis = map[string]VochainGenesis{
            "accounts": [
              {
                "address": "0xe0c941dd44ff4c43fc4683088b846ddb3234d169",
-               "balance": 10000
+               "balance": "10000"
              },
              {
                "address": "0x2c5066b71521dd5f2875cc2af226c2365b0dc7e8",
-               "balance": 10000
+               "balance": "10000"
              }
            ],
            "treasurer": "0x83832aa14c2d6a7fce927573b7a5607224f1e541",
            "tx_cost": {
-             "Tx_SetProcessStatus": 1,
-             "Tx_SetProcessCensus": 1,
-             "Tx_SetProcessResults": 1,
-             "Tx_SetProcessQuestionIndex": 1,
-             "Tx_RegisterKey": 1,
-             "Tx_NewProcess": 10,
-             "Tx_SendTokens": 1,
-             "Tx_SetAccountInfo": 5,
-             "Tx_AddDelegateForAccount": 5,
-             "Tx_DelDelegateForAccount": 5,
-             "Tx_CollectFaucet": 0
+             "Tx_SetProcessStatus": "1",
+             "Tx_SetProcessCensus": "1",
+             "Tx_SetProcessResults": "1",
+             "Tx_SetProcessQuestionIndex": "1",
+             "Tx_RegisterKey": "1",
+             "Tx_NewProcess": "10",
+             "Tx_SendTokens": "1",
+             "Tx_SetAccountInfo": "5",
+             "Tx_AddDelegateForAccount": "5",
+             "Tx_DelDelegateForAccount": "5",
+             "Tx_CollectFaucet": "0"
            }
          }
       }`,
@@ -313,28 +313,28 @@ var Genesis = map[string]VochainGenesis{
 	 "0x4a081070E9D555b5D19629a6bcc8B77f4aE6d39c"
       ],
       "accounts":[
-         { 
-            "address":"0xb926be24A9ca606B515a835E91298C7cF0f2846f", 
-            "balance":10000 
+         {
+            "address":"0xb926be24A9ca606B515a835E91298C7cF0f2846f",
+            "balance":"10000"
          },
-         { 
-            "address":"0x4a081070E9D555b5D19629a6bcc8B77f4aE6d39c", 
-            "balance":10000 
+         {
+            "address":"0x4a081070E9D555b5D19629a6bcc8B77f4aE6d39c",
+            "balance":"10000"
          }
       ],
       "treasurer": "0x309Bd6959bf4289CDf9c7198cF9f4494e0244b7d",
       "tx_cost": {
-         "Tx_SetProcessStatus": 10,
-         "Tx_SetProcessCensus": 10,
-         "Tx_SetProcessResults": 10,
-         "Tx_SetProcessQuestionIndex": 10,
-         "Tx_RegisterKey": 10,
-         "Tx_NewProcess": 10,
-         "Tx_SendTokens": 10,
-         "Tx_SetAccountInfo": 10,
-         "Tx_AddDelegateForAccount": 10,
-         "Tx_DelDelegateForAccount": 10,
-         "Tx_CollectFaucet": 10
+         "Tx_SetProcessStatus": "10",
+         "Tx_SetProcessCensus": "10",
+         "Tx_SetProcessResults": "10",
+         "Tx_SetProcessQuestionIndex": "10",
+         "Tx_RegisterKey": "10",
+         "Tx_NewProcess": "10",
+         "Tx_SendTokens": "10",
+         "Tx_SetAccountInfo": "10",
+         "Tx_AddDelegateForAccount": "10",
+         "Tx_DelDelegateForAccount": "10",
+         "Tx_CollectFaucet": "10"
        }
    }
 }
@@ -482,17 +482,17 @@ var Genesis = map[string]VochainGenesis{
       ],
       "treasurer": "0x309Bd6959bf4289CDf9c7198cF9f4494e0244b7d",
       "tx_cost": {
-         "Tx_SetProcessStatus": 100,
-         "Tx_SetProcessCensus": 100,
-         "Tx_SetProcessResults": 100,
-         "Tx_SetProcessQuestionIndex": 100,
-         "Tx_RegisterKey": 100,
-         "Tx_NewProcess": 100,
-         "Tx_SendTokens": 100,
-         "Tx_SetAccountInfo": 100,
-         "Tx_AddDelegateForAccount": 100,
-         "Tx_DelDelegateForAccount": 100,
-         "Tx_CollectFaucet": 100
+         "Tx_SetProcessStatus": "100",
+         "Tx_SetProcessCensus": "100",
+         "Tx_SetProcessResults": "100",
+         "Tx_SetProcessQuestionIndex": "100",
+         "Tx_RegisterKey": "100",
+         "Tx_NewProcess": "100",
+         "Tx_SendTokens": "100",
+         "Tx_SetAccountInfo": "100",
+         "Tx_AddDelegateForAccount": "100",
+         "Tx_DelDelegateForAccount": "100",
+         "Tx_CollectFaucet": "100"
        }
    }
 }
