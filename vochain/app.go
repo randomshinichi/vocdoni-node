@@ -3,7 +3,6 @@ package vochain
 import (
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -15,6 +14,7 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	mempl "github.com/tendermint/tendermint/mempool"
 	nm "github.com/tendermint/tendermint/node"
 	tmprototypes "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -461,7 +461,7 @@ func (app *BaseApplication) InitChain(req abcitypes.RequestInitChain) abcitypes.
 	// setting the app initial state with validators, oracles, height = 0 and empty apphash
 	// unmarshal app state from genesis
 	var genesisAppState GenesisAppState
-	err := json.Unmarshal(req.AppStateBytes, &genesisAppState)
+	err := tmjson.Unmarshal(req.AppStateBytes, &genesisAppState)
 	if err != nil {
 		fmt.Printf("%s\n", req.AppStateBytes)
 		log.Fatalf("cannot unmarshal app state bytes: %v", err)
