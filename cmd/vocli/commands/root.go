@@ -86,9 +86,17 @@ func init() {
 	txCostCmd.AddCommand(txCostSetCmd)
 	adminCmd.AddCommand(setOracleCmd)
 	processCmd.AddCommand(setProcessCmd)
+	processCmd.AddCommand(newProcessCmd)
 
 	keysNewCmd.Flags().StringVar(&faucetHex, "faucet", "", `specify an optional hex-encoded faucet payload to immediately top up
 	the new account with tokens`)
+
+	newProcessCmd.Flags().String("census-origin", "OFF_CHAIN_TREE", "set the census origin, which can be one of CENSUS_UNKNOWN,OFF_CHAIN_TREE,OFF_CHAIN_TREE_WEIGHTED,OFF_CHAIN_CA,ERC20,ERC721,ERC1155,ERC777,MINI_ME")
+	newProcessCmd.Flags().String("envelope-options", "", "set the envelope options, which can be blank (default) or a combination of (comma separated) serial,anonymous,encryptedvotes,uniquevalues,costfromweight")
+	newProcessCmd.Flags().String("process-mode", "autostart", "set the process mode, which can be a combination of (comma separated) autostart,interruptible,dynamiccensus,encryptedmetadata,preregister")
+	newProcessCmd.Flags().Uint64("max-census-size", 1000, "set the maximum number of participants in this process. Useful in rolling census mode")
+	newProcessCmd.Flags().Int("start-block", 0, "set the block at which the process should start")
+	newProcessCmd.Flags().Int("duration", 100, "set how long in blocks should the process stay in READY status")
 
 	// it's useful to have a static list of TxTypes built from the map
 	for k := range vochain.TxCostNameToTxTypeMap {
