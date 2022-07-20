@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 	"go.vocdoni.io/dvote/client"
@@ -110,14 +109,31 @@ var newProcessCmd = &cobra.Command{
 			return err
 		}
 
-		startBlock, processID, err := c.CreateProcess(key, key.Address().Bytes(), censusRootBytes, args[2], &envelopeType, &processMode, models.CensusOrigin(censusOrigin), startBlockFlag, durationFlag, maxCensusSize)
+		_, processID, err := c.CreateProcess(key, key.Address().Bytes(), censusRootBytes, args[2], &envelopeType, &processMode, models.CensusOrigin(censusOrigin), startBlockFlag, durationFlag, maxCensusSize)
 		if err != nil {
 			return fmt.Errorf("could not create process: %s", err)
 		}
-		fmt.Fprintf(Stdout, "Process %s will start on block %d\n", hex.EncodeToString(processID), startBlock)
+		fmt.Fprintln(Stdout, hex.EncodeToString(processID))
 
-		time.Sleep(4 * time.Second)
-		process, err := c.GetProcessInfo(processID)
+		return nil
+	},
+}
+
+var infoProcessCmd = &cobra.Command{
+	Use:   "info <processID>",
+	Short: "Get information about a Process. ProcessID can be prefixed with 0x but is not mandatory",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		c, err := client.New(v.GetString(urlKey))
+		if err != nil {
+			return err
+		}
+		pidH := strings.TrimPrefix(args[0], "0x")
+		pid, err := hex.DecodeString(pidH)
+		if err != nil {
+			return fmt.Errorf("could not decode hexstring %s to bytes", pidH)
+		}
+		process, err := c.GetProcessInfo(pid)
 		if err != nil {
 			return err
 		}

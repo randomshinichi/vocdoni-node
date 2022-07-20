@@ -87,6 +87,7 @@ func init() {
 	adminCmd.AddCommand(setOracleCmd)
 	processCmd.AddCommand(setProcessCmd)
 	processCmd.AddCommand(newProcessCmd)
+	processCmd.AddCommand(infoProcessCmd)
 
 	keysNewCmd.Flags().StringVar(&faucetHex, "faucet", "", `specify an optional hex-encoded faucet payload to immediately top up
 	the new account with tokens`)
