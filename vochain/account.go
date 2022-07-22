@@ -788,7 +788,7 @@ func CollectFaucetTxCheck(vtx *models.Tx, txBytes, signature []byte, state *Stat
 		return nil, fmt.Errorf("cannot get faucet account: %w", err)
 	}
 	if issuerAcc == nil {
-		return nil, fmt.Errorf("the account signing the faucet payload does not exist")
+		return nil, fmt.Errorf("the account signing the faucet payload (%s) does not exist", fromAddr.Hex())
 	}
 	cost, err := state.TxCost(models.TxType_COLLECT_FAUCET, false)
 	if err != nil {
@@ -835,6 +835,7 @@ func GenerateFaucetPackage(from *ethereum.SignKeys, to common.Address, value, id
 	if err != nil {
 		return nil, err
 	}
+
 	return &models.FaucetPackage{
 		Payload:   payload,
 		Signature: payloadSignature,

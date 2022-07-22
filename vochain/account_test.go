@@ -506,7 +506,8 @@ func TestCollectFaucetTx(t *testing.T) {
 	// should fail if from acc does not exist
 	err = testCollectFaucetTx(t, &nonExistentAccount, &toSigner, app, 1, 1, randomIdentifier+1)
 	qt.Assert(t, err, qt.IsNotNil)
-	qt.Assert(t, err, qt.ErrorMatches, ".* the account signing the faucet payload does not exist")
+	expectedErr := fmt.Sprintf(".* the account signing the faucet payload \\(%s\\) does not exist", nonExistentAccount.AddressString())
+	qt.Assert(t, err, qt.ErrorMatches, expectedErr)
 
 	// should fail if amount is not valid
 	err = testCollectFaucetTx(t, &signer, &toSigner, app, 2, 0, randomIdentifier+1)
