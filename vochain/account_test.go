@@ -1,6 +1,7 @@
 package vochain
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -605,4 +606,20 @@ func sendTx(app *BaseApplication, signer *ethereum.SignKeys, stx *models.SignedT
 		return fmt.Errorf("deliverTx failed: %s", detxresp.Data)
 	}
 	return nil
+}
+
+func TestGenerateFaucetPackage(t *testing.T) {
+	from := ethereum.NewSignKeys()
+	from.AddHexKey("91f86dd7a9ac258c4908ca8fbdd3157f84d1f74ffffcb9fa428fba14a1d40150")
+	fPkg, err := GenerateFaucetPackage(from, common.HexToAddress("0xf7FB77ee1F309D9468fB6DCB71aDD0f934a33c6B"), 10, 1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	got := hex.EncodeToString(fPkg.Signature)
+	// expected := "f0584eb5aa4125a7ffd770d0112eefaca641fbe2367d0034651cfb3b800126403752a1e725b1a6d9237d2babee9c3a1b8e767f2f9d519ef848d68ddbbc5901021c"
+	expected := "f0584eb5aa4125a7ffd770d0112eefaca641fbe2367d0034651cfb3b800126403752a1e725b1a6d9237d2babee9c3a1b8e767f2f9d519ef848d68ddbbc59010201" // Golang is the reference!
+	if got != expected {
+		t.Errorf("Faucet Payload signature %s does not equal Javascript output %s", got, expected)
+	}
 }
