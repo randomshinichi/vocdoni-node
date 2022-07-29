@@ -623,3 +623,20 @@ func TestGenerateFaucetPackage(t *testing.T) {
 		t.Errorf("Faucet Payload signature %s does not equal Javascript output %s", got, expected)
 	}
 }
+
+func TestGenerateFaucetPayload(t *testing.T) {
+	payload := &models.FaucetPayload{
+		Identifier: 1,
+		To:         common.HexToAddress("0xf7FB77ee1F309D9468fB6DCB71aDD0f934a33c6B").Bytes(),
+		Amount:     10,
+	}
+	payloadBytes, err := proto.Marshal(payload)
+	if err != nil {
+		t.Error(err)
+	}
+	got := hex.EncodeToString(payloadBytes)
+	expected := "08011214f7fb77ee1f309d9468fb6dcb71add0f934a33c6b180a"
+	if got != expected {
+		t.Errorf("serialized Faucet Payload %s does not equal Javascript output %s", got, expected)
+	}
+}
