@@ -16,6 +16,7 @@ import (
 	"go.vocdoni.io/dvote/client"
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/vochain"
+	"go.vocdoni.io/proto/build/go/models"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -203,7 +204,12 @@ var genFaucetCmd = &cobra.Command{
 			return err
 		}
 
-		faucetPackage, err := c.GenerateFaucetPackage(signer, common.HexToAddress(args[1]), amount, rand.Uint64())
+		var faucetPackage *models.FaucetPackage
+		if cmd.Flag("nonce").Changed {
+			faucetPackage, err = c.GenerateFaucetPackage(signer, common.HexToAddress(args[1]), amount, uint64(nonce))
+		} else {
+			faucetPackage, err = c.GenerateFaucetPackage(signer, common.HexToAddress(args[1]), amount, rand.Uint64())
+		}
 		if err != nil {
 			return err
 		}
