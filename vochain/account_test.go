@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/rand"
+	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -639,4 +640,38 @@ func TestGenerateFaucetPayload(t *testing.T) {
 	if got != expected {
 		t.Errorf("serialized Faucet Payload %s does not equal Javascript output %s", got, expected)
 	}
+}
+
+func TestSignMessage(t *testing.T) {
+	from := ethereum.NewSignKeys()
+	from.AddHexKey("a5ff5f333f74dbc44056a7944241675761093c4db01bcbfed7e978bd1b489a16")
+	payload := `{"method":"getVisibility","timestamp":1582196988222}`
+	fmt.Println("Address", from.AddressString())
+
+	sigv, err := from.SignVocdoniMsg([]byte(payload))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sigvS := hex.EncodeToString(sigv)
+	fmt.Println("SignVocdoniMsg Original/Modded")
+	fmt.Println(sigvS, sigvS[128:])
+
+	sigvSMod := strings.Join([]string{strings.TrimSuffix(sigvS, "01"), "1c"}, "")
+	fmt.Println(sigvSMod)
+
+	sigAddr, err := ethereum.AddrFromSignature([]byte(payload), sigv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("01", sigAddr.String())
+
+	sig2, err := hex.DecodeString(sigvSMod)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig2Addr, err := ethereum.AddrFromSignature([]byte(payload), sig2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("1c", sig2Addr.String())
 }
