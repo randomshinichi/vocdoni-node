@@ -344,6 +344,16 @@ func (app *BaseApplication) ChainID() string {
 	return app.chainId
 }
 
+// SetChainID sets the Node ChainID. Useful in e.g. vocone, where there is no
+// GenesisDoc to read chainId from.
+func (app *BaseApplication) SetChainID(c string) error {
+	if len(c) == 0 {
+		return fmt.Errorf("chainId should not be an empty string")
+	}
+	app.chainId = c
+	return nil
+}
+
 // MempoolSize returns the size of the transaction mempool
 func (app *BaseApplication) MempoolSize() int {
 	return app.fnMempoolSize()

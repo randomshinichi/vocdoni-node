@@ -62,7 +62,7 @@ type Vocone struct {
 }
 
 // NewVocone returns a ready Vocone instance.
-func NewVocone(dataDir string, oracleKey *ethereum.SignKeys, disableIpfs bool) (*Vocone, error) {
+func NewVocone(dataDir, chainId string, oracleKey *ethereum.SignKeys, disableIpfs bool) (*Vocone, error) {
 	vc := &Vocone{}
 	var err error
 	vc.app, err = vochain.NewBaseApplication(db.TypePebble, dataDir)
@@ -84,6 +84,10 @@ func NewVocone(dataDir string, oracleKey *ethereum.SignKeys, disableIpfs bool) (
 
 	vc.setDefaultMethods()
 	vc.app.State.SetHeight(uint32(vc.height))
+	err = vc.app.SetChainID(chainId)
+	if err != nil {
+		return nil, err
+	}
 
 	// Add given oracle
 	if err := vc.AddOracle(oracleKey); err != nil {

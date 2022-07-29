@@ -21,7 +21,7 @@ func TestVocone(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	vc, err := NewVocone(dir, &oracle, true)
+	vc, err := NewVocone(dir, "vocone-test", &oracle, true)
 	if err != nil {
 		t.Fatal(err)
 	}
