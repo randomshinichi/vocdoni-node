@@ -143,7 +143,7 @@ var sendCmd = &cobra.Command{
 			return err
 		}
 
-		nonce, err := getNonce(c, signer.AddressString())
+		nonce, err := getNonce(cmd, c, signer.AddressString())
 		if err != nil {
 			return fmt.Errorf("could not lookup the account's nonce, try specifying manually: %s", err)
 		}
@@ -172,7 +172,7 @@ var claimFaucetCmd = &cobra.Command{
 			return err
 		}
 
-		nonce, err := getNonce(c, signer.AddressString())
+		nonce, err := getNonce(cmd, c, signer.AddressString())
 		if err != nil {
 			return fmt.Errorf("could not lookup the nonce for %s, try specifying manually: %s", signer.AddressString(), err)
 		}
@@ -252,9 +252,13 @@ var mintCmd = &cobra.Command{
 	},
 }
 
-// getNonce calls Client.GetAccount to get the current information of a normal
-// account. It is not to be used for the treasurer account.
-func getNonce(c *client.Client, address string) (uint32, error) {
+// getNonce returns the nonce specified as an argument if one was specified, or
+// calls Client.GetAccount to get the current information of a normal account.
+// It is not to be used for the treasurer account.
+func getNonce(cmd *cobra.Command, c *client.Client, address string) (uint32, error) {
+	if cmd.Flag("nonce").Changed {
+		return nonce, nil
+	}
 	resp, err := c.GetAccount(common.HexToAddress(address))
 	if err != nil {
 		return 0, nil
@@ -266,7 +270,10 @@ func getNonce(c *client.Client, address string) (uint32, error) {
 }
 
 // getTreasurerNonce is like getNonce but only for the treasurer
-func getTreasurerNonce(c *client.Client) (uint32, error) {
+func getTreasurerNonce(cmd *cobra.Command, c *client.Client) (uint32, error) {
+	if cmd.Flags().Changed("nonce") {
+		return nonce, nil
+	}
 	resp, err := c.GetTreasurer()
 	if err != nil {
 		return 0, fmt.Errorf("could not lookup the treasurer's nonce, try specifying manually: %s", err)

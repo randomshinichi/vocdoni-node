@@ -221,7 +221,7 @@ func PromptPassword(prompt string) (string, error) {
 	return password, nil
 }
 
-func createAccount(key *ethkeystore.Key, url, infoUri, faucetPkg string) error {
+func createAccount(cmd *cobra.Command, key *ethkeystore.Key, url, infoUri, faucetPkg string) error {
 	fmt.Fprintf(Stdout, "Sending SetAccountInfo for key %s on %s\n", key.Address.String(), url)
 
 	signer := ethereum.NewSignKeys()
@@ -232,7 +232,7 @@ func createAccount(key *ethkeystore.Key, url, infoUri, faucetPkg string) error {
 		return err
 	}
 
-	nonce, err := getNonce(client, key.Address.Hex())
+	nonce, err := getNonce(cmd, client, key.Address.Hex())
 	if err != nil && err != vochain.ErrAccountNotExist {
 		return err
 	}

@@ -37,7 +37,7 @@ var accSetInfoCmd = &cobra.Command{
 		}
 		infoUri := args[1]
 
-		if err := createAccount(key, v.GetString(urlKey), infoUri, faucetHex); err != nil {
+		if err := createAccount(cmd, key, v.GetString(urlKey), infoUri, faucetHex); err != nil {
 			return err
 		}
 		return nil
@@ -79,7 +79,7 @@ var accAddDelegateCmd = &cobra.Command{
 			return err
 		}
 
-		nonce, err := getNonce(c, signer.Address().String())
+		nonce, err := getNonce(cmd, c, signer.Address().String())
 		if err != nil {
 			return err
 		}
@@ -103,7 +103,7 @@ var accDelDelegateCmd = &cobra.Command{
 			return err
 		}
 
-		nonce, err := getNonce(c, signer.Address().String())
+		nonce, err := getNonce(cmd, c, signer.Address().String())
 		if err != nil {
 			return err
 		}

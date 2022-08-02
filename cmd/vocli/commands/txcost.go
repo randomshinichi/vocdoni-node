@@ -94,7 +94,7 @@ var txCostSetCmd = &cobra.Command{
 			return fmt.Errorf("could not open keyfile %s", err)
 		}
 
-		nonce, err := getTreasurerNonce(c)
+		nonce, err := getTreasurerNonce(cmd, c)
 		if err != nil {
 			return err
 		}
